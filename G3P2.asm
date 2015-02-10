@@ -9,22 +9,59 @@ Include Irvine32.inc
 .386
 .model flat
 .data
+STACKDATASIZE eq 4
 dstack dsword 8 DUP(0)
 shead word
 
 .code
 ;pop MACRO
 ;result in eax
-pops MACRO 
-mov eax, dsword + shead
-dec shead
-ENDM
+pops PROC 
+cmp shead, 0;
+push edi
+mov eax,shead
+inc eax
+;check size
+cmp eax, 8
+jge ERROR
+mov shead,eax
+mul eax, STACKDATASIZE
+mov edi,eax
+pop eax
+mov dstack[edi], eax
+pop edi
+clc
+ret
+ERROR: nop
+pop edi
+setc
+ret
+ENDP
+
 ;push MACRO
 ;push in eax
-pushs MACRO
-mov eax, dsword + shead, eax
-inc shead
-ENDM
+pushs PROC
+push edi
+push eax
+mov eax,shead
+inc eax
+;check size
+cmp eax, 8
+jge ERROR
+mov shead,eax
+mul eax, STACKDATASIZE
+mov edi,eax
+pop eax
+mov dstack[edi], eax
+pop edi
+clc
+ret
+ERROR: nop
+pop eax
+pop edi
+setc
+ret
+ENDP
 ;add macro
 add MACRO
 ;sub macro
