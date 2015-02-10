@@ -77,3 +77,65 @@ main PROC
 
 main ENDP
 END main
+
+
+;check if an ascii value is a valid operation
+;valid operations: +,-,*,/,X,N,U,D,V,C,Q
+;input is in eax
+;@return 1 in ebx if value is digit, otherwise 0
+checkOp PROC
+;check for '+'
+  cmp eax,'+'
+  jz valid
+;check for '-'
+  cmp eax,'-'
+  jz valid
+;check for *
+  cmp eax,'*'
+  jz valid
+;check for /
+  cmp eax,'/'
+  jz valid
+;check for 'X' or 'x'
+  cmp eax,'X'
+  jz valid
+  cmp eax,'x'
+  jz valid
+;check for 'N' or 'n'
+  cmp eax,'N'
+  jz valid
+  cmp eax,'n'
+  jz valid
+;check for 'U' or 'u'
+  cmp eax,'U'
+  jz valid
+  cmp eax,'u'
+  jz valid
+;check for 'D' or 'd'
+  cmp eax,'D'
+  jz valid
+  cmp eax,'d'
+  jz valid
+;check for 'V' or 'v'
+  cmp eax,'V'
+  jz valid
+  cmp eax,'v'
+  jz valid
+;check for 'C' or 'c'
+  cmp eax,'C'
+  jz valid
+  cmp eax,'c'
+  jz valid
+;check for 'Q' or 'q'
+  cmp eax,'Q'
+  jz valid
+  cmp eax,'q'
+  jz valid
+invalid:
+  mov ebx,0
+  jmp fin
+valid:
+  mov ebx,1
+fin:
+  ret
+checkOp ENDP
