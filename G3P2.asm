@@ -9,8 +9,23 @@ Include Irvine32.inc
 .386
 .model flat
 .data
+CR equ 0x0D
+LF equ 0x0A
+buffersize equ 41
 dstack dsword 8 DUP(0)
 shead word
+buffer byte buffersize dup(0)
+promptMenu byte "Enter an input to add onto the stack",LF,CR,/
+    "+ - * /: relative mathematical operations",LF,CR,/
+    "X: exchange top two elements of the stack",LF,CR,/
+    "N: negate top element of stack",LF,CR,/
+    "U: roll the stack up",LF,CR,/
+    "D: roll stack down",LF,CR,/
+    "V: view all 8 elements of the stack",LF,CR,/
+    "C: clear the stack",LF,CR,/
+    "Q: quit the program",LF,CR,0
+promptInvalid byte "Invalid input",LF,CR,0
+
 
 .code
 ;pop MACRO
@@ -70,7 +85,10 @@ main PROC
 ;title/desc
 
 ;start loop
-
+Begin:
+  call Clrscr
+  mov edx, offset promptMenu
+  call WriteString
 
 ;endloop
 
