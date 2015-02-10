@@ -79,58 +79,53 @@ main ENDP
 END main
 
 
+;ckEqual
+;checks to see if a value, in eax, is equal to the value inputted
+ckEqual MACRO char
+  cmp eax,char
+  mov ebx,0x40
+  and ebx,eflags
+  add ecx,ebx
+ENDM
+
 ;check if an ascii value is a valid operation
 ;valid operations: +,-,*,/,X,N,U,D,V,C,Q
 ;input is in eax
 ;@return 1 in ebx if value is digit, otherwise 0
 checkOp PROC
+  mov ecx,0
 ;check for '+'
-  cmp eax,'+'
-  jz valid
+  ckEqual '+'
 ;check for '-'
-  cmp eax,'-'
-  jz valid
+  ckEqual '-'
 ;check for *
-  cmp eax,'*'
-  jz valid
+  ckEqual '*'
 ;check for /
-  cmp eax,'/'
-  jz valid
+  ckEqual '/'
 ;check for 'X' or 'x'
-  cmp eax,'X'
-  jz valid
-  cmp eax,'x'
-  jz valid
+  ckEqual 'X'
+  ckEqual 'x'
 ;check for 'N' or 'n'
-  cmp eax,'N'
-  jz valid
-  cmp eax,'n'
-  jz valid
+  ckEqual 'N'
+  ckEqual 'n'
 ;check for 'U' or 'u'
-  cmp eax,'U'
-  jz valid
-  cmp eax,'u'
-  jz valid
+  ckEqual 'U'
+  ckEqual 'u'
 ;check for 'D' or 'd'
-  cmp eax,'D'
-  jz valid
-  cmp eax,'d'
-  jz valid
+  ckEqual 'D'
+  ckEqual 'd'
 ;check for 'V' or 'v'
-  cmp eax,'V'
-  jz valid
-  cmp eax,'v'
-  jz valid
+  ckEqual 'V'
+  ckEqual 'v'
 ;check for 'C' or 'c'
-  cmp eax,'C'
-  jz valid
-  cmp eax,'c'
-  jz valid
+  ckEqual 'C'
+  ckEqual 'c'
 ;check for 'Q' or 'q'
-  cmp eax,'Q'
-  jz valid
-  cmp eax,'q'
-  jz valid
+  ckEqual 'Q'
+  ckEqual 'q'
+;check to see if the zero bit was set at any point
+  cmp ecx,0x64
+  jz  valid
 invalid:
   mov ebx,0
   jmp fin
