@@ -42,6 +42,7 @@ LOOPT:
   QCHE:
   cmp buffer[edi],'Q'
   je ENDL
+ 
   
 SLOOP:
 mov eax,0
@@ -76,7 +77,7 @@ PNLOOP: nop
   inc eax
   cmp eax, charred
   jl PNLOOP
-
+jmp ADDAC
 Error:
 pop eax
 mov edx, offset prompterrc
