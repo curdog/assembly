@@ -5,18 +5,21 @@ TITLE Group 5 Exam 1 Program
 Include Irvine32.inc
 
 .386
-.model flat, stdcall
+.model flat
+.stack 4096
 
 .data
   buffsize byte 80
-  buffer byte buffsize dup(0)
-  acc dword
-  promptbeg "Enter numbers separated by spaces Q to exit",0
-  prompterrc "Bad char",0
+  buffer byte 80 dup (0) 
+  
+  accum word 0
+  
+  promptbeg byte "Enter numbers separated by spaces Q to exit",0
+  prompterrc byte "Bad char",0
 .code
 main PROC
 ;loop start
-LOOP: nop
+LOOPT: 
 ;friendly message
   mov edx, offset promptbeg
   call WriteString
@@ -31,7 +34,7 @@ LOOP: nop
   sahf
   cmp ebx,1
   lahf
-  mov ecx,ah
+;  mov ecx,ah
   cmp buffer[edi],'Q'
   lahf
   mov al,ah
