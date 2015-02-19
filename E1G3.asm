@@ -1,11 +1,11 @@
-TITLE Group 3 Exam 1 Program
-;Exam 1 group 3 program
+TITLE Group 5 Exam 1 Program
+;Exam 1 group 5 program
 ;
 ;
 Include Irvine32.inc
 
 .386
-.model flat stdcall
+.model flat, stdcall
 
 .data
   buffsize byte 80
