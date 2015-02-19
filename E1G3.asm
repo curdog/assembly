@@ -18,6 +18,7 @@ Include Irvine32.inc
   prompterrc byte "Bad char ", 0
   promptend byte "End of Program.  Sum: ",0
   accum dword 0
+  charred dword 0
 .code
 main PROC
 ;loop start
@@ -32,6 +33,7 @@ LOOPT:
   call ReadString
 ;jump quit
   mov ebx, eax
+  mov charred, eax
   mov eax,0
   sahf
   cmp ebx,1
@@ -72,7 +74,7 @@ PNLOOP: nop
   ;restore index
   pop eax
   inc eax
-  cmp eax, 80
+  cmp eax, charred
   jl PNLOOP
 
 Error:
@@ -83,7 +85,7 @@ ADDAC:
 ;add into acc
 add accum,ebx
 inc eax ;skip space or bad data
-cmp eax, 80
+cmp eax, charred
 jl MDLOOP
 
 ;clear array
