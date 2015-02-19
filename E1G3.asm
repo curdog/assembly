@@ -5,18 +5,22 @@ TITLE Group 5 Exam 1 Program
 Include Irvine32.inc
 
 .386
-.model flat, stdcall
+.model flat
+.stack 4096
 
 .data
   buffsize byte 80
-  buffer byte buffsize dup(0)
-  acc dword
-  promptbeg "Enter numbers separated by spaces Q to exit",0
-  prompterrc "Bad char",0
+  buffer byte 80 dup (0) 
+  
+  accum dword 0
+  
+  promptbeg byte "Enter numbers separated by spaces Q to exit: ",0
+  prompterrc byte "Bad char",0
+  promptend byte "End of Program.  Sum: ",0
 .code
 main PROC
 ;loop start
-LOOP: nop
+LOOPT: 
 ;friendly message
   mov edx, offset promptbeg
   call WriteString
@@ -31,12 +35,14 @@ LOOP: nop
   sahf
   cmp ebx,1
   lahf
-  mov ecx,ah
+  movzx ecx,ah
   cmp buffer[edi],'Q'
   lahf
   mov al,ah
-  mov ah,0
-  
+  and ebx,eax
+  and ebx, 64
+  cmp ebx, 64
+  je ENDL
   
 ;more data
 .data
@@ -53,6 +59,7 @@ NUMLOOP: nop
   inc esi
   loop NUMLOOP
 
+
 ;add into acc
 
 
@@ -67,6 +74,17 @@ CLRA: nop
   jne CLRA
 ;quit
 ENDL: nop
+
+mov edx, offset promptend
+call WriteString
+
+mov eax,accum
+call WriteInt
+
+call Crlf
+call WaitMsg
+
 exit
 main ENDP
 END main
+
