@@ -12,10 +12,11 @@ Include Irvine32.inc
   buffsize byte 80
   buffer byte 80 dup (0) 
   
-  accum word 0
+  accum dword 0
   
-  promptbeg byte "Enter numbers separated by spaces Q to exit",0
+  promptbeg byte "Enter numbers separated by spaces Q to exit: ",0
   prompterrc byte "Bad char",0
+  promptend byte "End of Program.  Sum: ",0
 .code
 main PROC
 ;loop start
@@ -62,6 +63,16 @@ CLRA: nop
   jne CLRA
 ;quit
 ENDL: nop
+
+mov edx, offset promptend
+call WriteString
+
+mov eax,accum
+call WriteInt
+
+call Crlf
+call WaitMsg
+
 exit
 main ENDP
 END main
