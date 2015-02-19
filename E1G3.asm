@@ -34,12 +34,14 @@ LOOPT:
   sahf
   cmp ebx,1
   lahf
-;  mov ecx,ah
+  movzx ecx,ah
   cmp buffer[edi],'Q'
   lahf
   mov al,ah
-  mov ah,0
-  
+  and ebx,eax
+  and ebx, 64
+  cmp ebx, 64
+  je ENDL
   
 ;more data
 
