@@ -114,7 +114,7 @@ pop ebx
 pop eax
 ret
 
-subs ENP
+subs ENDP
 ;div macro
 divs PROC
 push eax
@@ -124,7 +124,7 @@ push edi
 call popfunc
 mov ebx,eax
 call popfunc
-idiv eax, ebx
+idiv eax
 call pushs
 
 pop edi
@@ -171,7 +171,7 @@ Begin:
   call Clrscr
   mov edx, offset promptMenu
   call WriteString
-
+  call WaitMsg
 ;endloop
 
 
