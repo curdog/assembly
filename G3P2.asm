@@ -141,10 +141,11 @@ END main
 ;ckEqual
 ;checks to see if a value, in eax, is equal to the value inputted
 ckEqual MACRO char, func
+  LOCAL nit
   cmp eax,char
-  jnz [eip + 4]
+  jnz nit
   call func
-  jmp Fin
+  nit:
 ENDM
 
 ;check if an ascii value is a valid operation
@@ -154,9 +155,9 @@ ENDM
 checkOp PROC
   mov ecx,0
 ;check for '+'
-  ckEqual '+', adds
+  ckEqual '+', adds, l1
 ;check for '-'
-  ckEqual '-', subs
+  ckEqual '-', subs, l2
 ;check for *
   ckEqual '*'
 ;check for /
