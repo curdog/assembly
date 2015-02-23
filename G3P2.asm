@@ -9,29 +9,29 @@ Include Irvine32.inc
 .386
 .model flat
 .data
-STACKDATASIZE eq 4
-CR equ 0x0D
-LF equ 0x0A
+STACKDATASIZE equ 4
+CR equ 0Dh
+LF equ 0Ah
 buffersize equ 41
-dstack dsword 8 DUP(0)
-shead word
+dstack dword 8 DUP(0)
+shead dword 0
 buffer byte buffersize dup(0)
-promptMenu byte "Enter an input to add onto the stack",LF,CR,/
-    "+ - * /: relative mathematical operations",LF,CR,/
-    "X: exchange top two elements of the stack",LF,CR,/
-    "N: negate top element of stack",LF,CR,/
-    "U: roll the stack up",LF,CR,/
-    "D: roll stack down",LF,CR,/
-    "V: view all 8 elements of the stack",LF,CR,/
-    "C: clear the stack",LF,CR,/
-    "Q: quit the program",LF,CR,0
+promptMenu byte "Enter an input to add onto the stack",LF,CR,
+ "+ - * /: relative mathematical operations",LF,CR,
+  "X: exchange top two elements of the stack",LF,CR,
+   "N: negate top element of stack",LF,CR,
+    "U: roll the stack up",LF,CR, 
+	"D: roll stack down",LF,CR,
+	 "V: view all 8 elements of the stack",LF,CR,
+	  "C: clear the stack",LF,CR,
+	   "Q: quit the program",LF,CR,0
+
 promptInvalid byte "Invalid input",LF,CR,0
 
-
 .code
-;pop MACRO
+;pop procedure
 ;result in eax
-pops PROC 
+popfunc PROC 
 cmp shead, 0;
 push edi
 mov eax,shead
@@ -40,7 +40,7 @@ inc eax
 cmp eax, 8
 jge ERROR
 mov shead,eax
-mul eax, STACKDATASIZE
+imul eax, STACKDATASIZE
 mov edi,eax
 pop eax
 mov dstack[edi], eax
@@ -49,9 +49,9 @@ clc
 ret
 ERROR: nop
 pop edi
-setc
+;setc
 ret
-ENDP
+popfunc ENDP
 
 ;push MACRO
 ;push in eax
@@ -64,41 +64,45 @@ inc eax
 cmp eax, 8
 jge ERROR
 mov shead,eax
-mul eax, STACKDATASIZE
+imul eax, STACKDATASIZE
 mov edi,eax
 pop eax
 mov dstack[edi], eax
 pop edi
 clc
-ret
+jmp ENDQ
 ERROR: nop
 pop eax
 pop edi
-setc
+stc
+ENDQ:nop
 ret
-ENDP
-;add macro
-add MACRO
+pushs ENDP
+
+;add function
+adds PROC
+
+adds ENDP
 ;sub macro
-adds MACRO
+subs MACRO
 
 ENDM
 ;div macro
-divs MACRO
+divs PROC
 
-ENDM
+divs ENDP
 ;mul macro
-muls MACRO
+muls PROC
 
-ENDM
+muls ENDP
 ;exch macro
-exchs MACRO
+exchs PROC
 
-ENDM
+exchs ENDP
 ;neg macro
-negs MACRO
+negs PROC
 
-ENDM
+negs ENDP
 ;roll up macro
 rollu MACRO
 
