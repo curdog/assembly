@@ -81,7 +81,20 @@ pushs ENDP
 
 ;add function
 adds PROC
+push eax
+push ebx
+push edi
 
+call popfunc
+mov ebx,eax
+call popfunc
+add eax, ebx
+call pushs
+
+pop edi
+pop ebx
+pop eax
+ret
 adds ENDP
 ;sub macro
 subs MACRO
@@ -145,6 +158,7 @@ ckEqual MACRO char, func
   cmp eax,char
   jnz nit
   call func
+  jmp fin
   nit:
 ENDM
 
@@ -155,11 +169,11 @@ ENDM
 checkOp PROC
   mov ecx,0
 ;check for '+'
-  ckEqual '+', adds, l1
+  ckEqual '+', adds
 ;check for '-'
-  ckEqual '-', subs, l2
+  ckEqual '-', subs
 ;check for *
-  ckEqual '*'
+  ckEqual '*' 
 ;check for /
   ckEqual '/'
 ;check for 'X' or 'x'
