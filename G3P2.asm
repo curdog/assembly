@@ -97,12 +97,40 @@ pop eax
 ret
 adds ENDP
 ;sub macro
-subs MACRO
+subs PROC
 
-ENDM
+push eax
+push ebx
+push edi
+
+call popfunc
+mov ebx,eax
+call popfunc
+sub eax, ebx
+call pushs
+
+pop edi
+pop ebx
+pop eax
+ret
+
+subs ENP
 ;div macro
 divs PROC
+push eax
+push ebx
+push edi
 
+call popfunc
+mov ebx,eax
+call popfunc
+idiv eax, ebx
+call pushs
+
+pop edi
+pop ebx
+pop eax
+ret
 divs ENDP
 ;mul macro
 muls PROC
