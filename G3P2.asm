@@ -281,19 +281,18 @@ rolld ENDP
 views PROC
 	push eax
 	push ebx
-	push esi
 
-	mov eax,0
+	mov ebx,0
 PopStack:
+	mov eax, ebx
 	imul eax,STACKDATASIZE		;calculate for the next esi result in eax
 	mov eax,dstack[eax]			;grab the contents at the index specified
 	call WriteInt				;display the contents of the stack
 	call Crlf
-	inc eax
-	cmp eax,32					;are we at the end of the stack
-	jle PopStack
+	inc ebx
+	cmp eax,8					;are we at the end of the stack
+	jl PopStack
 
-	pop esi
 	pop ebx
 	pop eax
 views ENDP
@@ -302,8 +301,8 @@ views ENDP
 ;clear stack macro
 ;
 clears PROC
-push eax
-
+;push eax
+ret
 clears ENDP
 
 ;
