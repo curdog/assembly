@@ -295,6 +295,7 @@ PopStack:
 
 	pop ebx
 	pop eax
+	ret
 views ENDP
 
 ;
@@ -302,7 +303,22 @@ views ENDP
 ;
 clears PROC
 ;push eax
-ret
+
+	push eax
+	push ebx
+
+	mov ebx,0
+ClrStack:
+	mov eax, ebx
+	imul eax,STACKDATASIZE		;calculate for the next esi result in eax
+	mov dstack[eax],0			;grab the contents at the index specified
+	inc ebx
+	cmp eax,8					;are we at the end of the stack
+	jl ClrStack
+
+	pop ebx
+	pop eax
+	ret
 clears ENDP
 
 ;
