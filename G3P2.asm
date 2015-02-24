@@ -1,6 +1,6 @@
-TITLE Assembly Program 1  by Group 3
+TITLE Assembly Program 1  by Group 5
 
-; Description:    Assembly Program 1
+; Description:    Assembly Program 2
 ; Class:          CSC
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 ; Revision date:  2/2
@@ -162,8 +162,15 @@ exchs ENDP
 
 ;neg macro
 negs PROC
-
+push eax
+mov eax,0
+call popfunc
+neg eax
+call pushs
+pop eax
+ret
 negs ENDP
+
 ;roll up macro
 rollu MACRO
 
