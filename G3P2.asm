@@ -365,6 +365,7 @@ push edi
   
  ;check digit
   mov edi, 0
+  mov edx, 0
   PNLOOP: nop
   mov eax,0
   mov al, buffer[edi]
@@ -385,11 +386,12 @@ push edi
 
   ;shift and add
   imul ebx, 10
-  add ebx,eax
+  add edx,eax
   inc edi
   cmp edi, charred
   jl PNLOOP
-
+  mov eax, edx
+  jmp fin
 invalid:
   mov ebx,2
   jmp fin
