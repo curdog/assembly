@@ -47,20 +47,24 @@ Begin:
 	call ReadString
 	mov charred,eax		;get input in eax
 	movzx eax, buffer[0]
-
-	call checkOp		;test to see if it was a valid input
 	cmp eax,'q'
 	je Fin
 	cmp eax,'Q'
 	je Fin
-	cmp ebx,0			;check to see if there was an invalid input
+
+	call checkOp		;test to see if it was a valid input
+
+	cmp ebx,2			;check to see if there was an invalid input
 	je ShowInvalid
+	cmp ebx,1			;check for number
 	jmp Begin			;continue the loop until user exists
 ShowInvalid:
-	mov eax, offset promptInvalid
+	mov edx, offset promptInvalid
 	call WriteString
 	jmp Begin
-
+PushNumber:
+	call pushs
+	jmp Begin
 ;keep the program open so user has the time to 
 ;think about what he has done. 
 Fin:
@@ -278,14 +282,14 @@ views PROC
 	push ebx
 	push esi
 
-	mov esi,0
+	mov eax,0
 PopStack:
-	imul esi,STACKDATASIZE		;calculate for the next esi result in eax
+	imul eax,STACKDATASIZE		;calculate for the next esi result in eax
 	mov eax,dstack[eax]			;grab the contents at the index specified
 	call WriteInt				;display the contents of the stack
 	call Crlf
-	inc esi
-	cmp esi,8					;are we at the end of the stack
+	inc eax
+	cmp eax,32					;are we at the end of the stack
 	jle PopStack
 
 	pop esi
@@ -323,7 +327,7 @@ ENDM
 ;check if an ascii value is a valid operation
 ;valid operations: +,-,*,/,X,N,U,D,V,C,Q
 ;input is in eax
-;@return value in eax if value is digit, 0 in ebx if not a number
+;@return value in eax if value is digit, 2 in ebx if not a number
 checkOp PROC
 push edi
  ;get top of buffer
@@ -358,8 +362,9 @@ push edi
 ;check for 'Q' or 'q'
   ckEqual 'Q', stahp
   ckEqual 'q', stahp
-
+  
  ;check digit
+  mov edi, 0
   PNLOOP: nop
   mov eax,0
   mov al, buffer[edi]
@@ -375,6 +380,9 @@ push edi
   cmp eax, 9
   jg invalid
 
+  ;arrrrr there be a digit!
+  mov ebx, 1
+
   ;shift and add
   imul ebx, 10
   add ebx,eax
@@ -383,10 +391,10 @@ push edi
   jl PNLOOP
 
 invalid:
-  mov ebx,0
+  mov ebx,2
   jmp fin
 valid:
-  mov ebx,1
+  mov ebx,0
 fin:
   pop edi
   ret
