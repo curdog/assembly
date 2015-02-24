@@ -1,13 +1,14 @@
-TITLE Assembly Program 1  by Group 5
+TITLE Assembly Program 1  by Group 3
 
-; Description:    Assembly Program 2
+; Description:    Assembly Program 1
 ; Class:          CSC
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 ; Revision date:  2/2
 
 Include Irvine32.inc
 .386
-.model flat
+.model flat, stdcall
+ExitProcess PROTO, dwExistCode:DWORD
 .data
 STACKDATASIZE equ 4
 CR equ 0Dh
@@ -29,181 +30,209 @@ promptMenu byte "Enter an input to add onto the stack",LF,CR,
 promptInvalid byte "Invalid input",LF,CR,0
 
 .code
+
+;
+;main procedure
+;
+main PROC
+;title/desc
+	call Clrscr
+;start loop
+Begin:
+	mov edx, offset promptMenu
+	call WriteString
+	call ReadString		;get input in eax
+	call checkOp		;test to see if it was a valid input
+	cmp eax,'q'
+	je Fin
+	cmp eax,'Q'
+	je Fin
+	cmp ebx,0			;check to see if there was an invalid input
+	je ShowInvalid
+	jmp Begin			;continue the loop until user exists
+ShowInvalid:
+	mov eax, offset promptInvalid
+	call WriteString
+	jmp Begin
+
+;keep the program open so user has the time to 
+;think about what he has done. 
+Fin:
+	call Crlf
+	call WaitMsg
+	mov edx, offset buffer
+	mov ecx, sizeof buffer
+	call ReadString
+	INVOKE ExitProcess,0
+main ENDP
+
+;
 ;pop procedure
 ;result in eax
+;
 popfunc PROC 
-cmp shead, 0;
-push edi
-mov eax,shead
-inc eax
+	cmp shead, 0
+	push edi
+	mov eax,shead
+	inc eax
 ;check size
-cmp eax, 8
-jge ERROR
-mov shead,eax
-imul eax, STACKDATASIZE
-mov edi,eax
-pop eax
-mov dstack[edi], eax
-pop edi
-clc
-ret
+	cmp eax, 8
+	jge ERROR
+	mov shead,eax
+	imul eax, STACKDATASIZE
+	mov edi,eax
+	pop eax
+	mov dstack[edi], eax
+	pop edi
+	clc
+	ret
 ERROR: nop
-pop edi
-;setc
-ret
+	pop edi
+	;setc
+	ret
 popfunc ENDP
 
 ;push MACRO
 ;push in eax
 pushs PROC
-push edi
-push eax
-mov eax,shead
-inc eax
+	push edi
+	push eax
+	mov eax,shead
+	inc eax
 ;check size
-cmp eax, 8
-jge ERROR
-mov shead,eax
-imul eax, STACKDATASIZE
-mov edi,eax
-pop eax
-mov dstack[edi], eax
-pop edi
-clc
-jmp ENDQ
+	cmp eax, 8
+	jge ERROR
+	mov shead,eax
+	imul eax, STACKDATASIZE
+	mov edi,eax
+	pop eax
+	mov dstack[edi], eax
+	pop edi
+	clc
+	jmp ENDQ
 ERROR: nop
-pop eax
-pop edi
-stc
+	pop eax
+	pop edi
+	stc
 ENDQ:nop
-ret
+	ret
 pushs ENDP
 
+;
 ;add function
+;
 adds PROC
-push eax
-push ebx
-push edi
+	push eax
+	push ebx
+	push edi
 
-call popfunc
-mov ebx,eax
-call popfunc
-add eax, ebx
-call pushs
+	call popfunc
+	mov ebx,eax
+	call popfunc
+	add eax, ebx
+	call pushs
 
-pop edi
-pop ebx
-pop eax
-ret
+	pop edi
+	pop ebx
+	pop eax
+	ret
 adds ENDP
-;sub macro
+
+;
+;subs macro
+;
 subs PROC
+	push eax
+	push ebx
+	push edi
 
-push eax
-push ebx
-push edi
+	call popfunc
+	mov ebx,eax
+	call popfunc
+	sub eax, ebx
+	call pushs
 
-call popfunc
-mov ebx,eax
-call popfunc
-sub eax, ebx
-call pushs
-
-pop edi
-pop ebx
-pop eax
-ret
-
+	pop edi
+	pop ebx
+	pop eax
+	ret
 subs ENDP
+
+;
 ;div macro
+;
 divs PROC
-push eax
-push ebx
-push edi
+	push eax
+	push ebx
+	push edi
 
-call popfunc
-mov ebx,eax
-call popfunc
-idiv eax
-call pushs
+	call popfunc
+	mov ebx,eax
+	call popfunc
+	idiv eax
+	call pushs
 
-pop edi
-pop ebx
-pop eax
-ret
+	pop edi
+	pop ebx
+	pop eax
+	ret
 divs ENDP
+
+;
 ;mul macro
+;
 muls PROC
 
 muls ENDP
 
+;
 ;exch macro
+;
 exchs PROC
-push eax
-push ebx
-push ecx
-cmp shead,4 ;check for two elements
-jl exit_exchange
-mov eax,0
-call popfunc
-mov ebx,eax
-call popfunc
-mov ecx,eax
-mov eax,ebx
-call pushs
-mov eax,ecx
-call pushs
-exit_exchange:
-pop ecx
-pop ebx
-pop eax
-ret
+
 exchs ENDP
 
+;
 ;neg macro
+;
 negs PROC
-push eax
-mov eax,0
-call popfunc
-neg eax
-call pushs
-pop eax
-ret
+
 negs ENDP
 
+;
 ;roll up macro
-rollu MACRO
+;
+rollu PROC
 
-ENDM
+rollu ENDP
+
+;
 ;roll down
-rolld MACRO
+;
+rolld PROC
 
-ENDM
+rolld ENDP
+
+;
 ;view stack macro
-views MACRO
+;
+views PROC
 
+views ENDP
 
-ENDM
+;
 ;clear stack macro
-clears MACRO
+;
+clears PROC
 
-ENDM
+clears ENDP
 
+;
+;stahp procedure
+;
+stahp PROC
 
-main PROC
-;title/desc
-
-;start loop
-Begin:
-  call Clrscr
-  mov edx, offset promptMenu
-  call WriteString
-  call WaitMsg
-;endloop
-
-
-main ENDP
-END main
+stahp ENDP
 
 
 ;ckEqual
@@ -213,7 +242,7 @@ ckEqual MACRO char, func
   cmp eax,char
   jnz nit
   call func
-  jmp fin
+  ;jmp fin
   nit:
 ENDM
 
@@ -228,32 +257,32 @@ checkOp PROC
 ;check for '-'
   ckEqual '-', subs
 ;check for *
-  ckEqual '*' 
+  ckEqual '*', muls
 ;check for /
-  ckEqual '/'
+  ckEqual '/', divs
 ;check for 'X' or 'x'
-  ckEqual 'X'
-  ckEqual 'x'
+  ckEqual 'X', exchs
+  ckEqual 'x', exchs
 ;check for 'N' or 'n'
-  ckEqual 'N'
-  ckEqual 'n'
+  ckEqual 'N', negs
+  ckEqual 'n', negs
 ;check for 'U' or 'u'
-  ckEqual 'U'
-  ckEqual 'u'
+  ckEqual 'U', rollu
+  ckEqual 'u', rollu
 ;check for 'D' or 'd'
-  ckEqual 'D'
-  ckEqual 'd'
+  ckEqual 'D', rolld
+  ckEqual 'd', rolld
 ;check for 'V' or 'v'
-  ckEqual 'V'
-  ckEqual 'v'
+  ckEqual 'V', views
+  ckEqual 'v', views
 ;check for 'C' or 'c'
-  ckEqual 'C'
-  ckEqual 'c'
+  ckEqual 'C', clears
+  ckEqual 'c', clears
 ;check for 'Q' or 'q'
-  ckEqual 'Q'
-  ckEqual 'q'
+  ckEqual 'Q', stahp
+  ckEqual 'q', stahp
 ;check to see if the zero bit was set at any point
-  cmp ecx,0x64
+  cmp ecx,64h
   jz  valid
 invalid:
   mov ebx,0
@@ -263,3 +292,5 @@ valid:
 fin:
   ret
 checkOp ENDP
+
+END main
