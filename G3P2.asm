@@ -316,6 +316,40 @@ rollu ENDP
 ;
 ;roll down
 ;
+	push eax
+	push ebx
+	push esi
+	mov esi,0
+	mov eax,shead
+	cmp eax,0
+	je proces ;skip copytemp
+	mov esi,shead
+copy_temp: ;copy to temp
+	cmp esi,0
+	jl rolldown
+	mov ebx,dstack[esi]
+	sub esi,4
+	mov tempstack[esi],ebx
+	jmp copy_temp
+rolldown: 	 ;only bottom of dstack remains
+	mov eax,shead
+proces:            ;move bottom of dstack to tempstack top
+	mov ebx,dstack[0]    
+	mov tempstack[eax],ebx
+	mov esi,0
+	mov eax,shead
+copy_back: ;copy from tempstack to dstack
+	cmp esi,eax
+	jg cdone
+	mov ebx,tempstack[esi]
+	mov dstack[esi],ebx
+	add esi,4
+	jmp copy_back
+cdone:
+	pop esi
+	pop ebx
+	pop eax
+	ret
 rolld PROC
 
 rolld ENDP
