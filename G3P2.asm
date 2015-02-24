@@ -89,9 +89,7 @@ popfunc PROC
 	mov ebx,dstack[eax]				;store at temp register
 	mov dstack[eax],0				;clear contents of stack that we popped
 	mov eax,ebx						;will return eax
-	call WriteInt
 	jmp Cont
-
 	;
 	;cmp shead, 0
 	push edi
@@ -109,8 +107,7 @@ popfunc PROC
 	clc
 	ret
 ERROR: nop
-	pop edi
-	;setc
+	call dispError
 Cont:
 	pop ebx
 	pop eax
@@ -154,8 +151,10 @@ adds PROC
 	push edi
 
 	call popfunc
+	call WriteInt		;;;;
 	mov ebx,eax
 	call popfunc
+	call WriteInt		;;;;
 	add eax, ebx
 	call pushs
 
@@ -227,7 +226,7 @@ muls PROC
 	call popfunc
 	mov edx,eax
 	call popfunc
-	imul edx
+	imul eax,edx
 	call pushs
 	
 	pop edi
@@ -379,10 +378,10 @@ stahp ENDP
 ;displays that an error was encountered during processing
 ;
 dispError PROC
-	push eax
-
-
-	pop eax
+	push edx
+	mov edx,offset promptError
+	call WriteString
+	pop edx
 dispError ENDP
 
 
@@ -437,7 +436,7 @@ push edi
  ;check digit
   mov edi, 0
   mov edx, 0
-  PNLOOP: nop
+PNLOOP: nop
   mov eax,0
   mov al, buffer[edi]
   mov ecx, eax
@@ -471,6 +470,7 @@ valid:
   mov ebx,0
 fin:
   
+  call WriteInt
   pop edi
   ret
 checkOp ENDP
