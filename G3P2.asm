@@ -1,6 +1,6 @@
-TITLE Assembly Program 1  by Group 3
+TITLE Assembly Program 1  by Group 5
 
-; Description:    Assembly Program 1
+; Description:    Assembly Program 2
 ; Class:          CSC
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 ; Revision date:  2/23
@@ -15,6 +15,7 @@ CR equ 0Dh
 LF equ 0Ah
 buffersize equ 41
 dstack dword 8 DUP(0)
+tempstack dword 8 DUP(0) ;for rolling
 
 buffer byte buffersize dup(0)
 promptMenu byte "Enter an input to add onto the stack",LF,CR,
@@ -265,7 +266,38 @@ negs ENDP
 ;roll up macro
 ;
 rollu PROC
-
+push eax
+push ebx
+push esi
+mov esi,0
+mov eax,shead
+cmp eax,0
+je proces ;skip copytemp
+copy_temp: ;copy to temp
+	cmp esi,eax
+	jg rolltop ;jump when all but top is copied
+	mov ebx,dstack[esi]
+	add esi,4
+	mov tempstack[esi],ebx
+	jmp copy_temp
+rolltop:
+proces:
+	mov ebx,dstack[eax]
+	mov tempstack[0],ebx
+	mov esi,0
+	mov eax,shead
+copy_back: ;copy from temp to dstack
+	cmp esi,eax
+	jg cdone
+	mov ebx,tempstack[esi]
+	mov dstack[esi],ebx
+	add esi,4
+	jmp copy_back
+cdone:
+pop esi
+pop ebx
+pop eax
+ret
 rollu ENDP
 
 ;
