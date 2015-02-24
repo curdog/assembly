@@ -195,14 +195,38 @@ muls ENDP
 ;exch macro
 ;
 exchs PROC
-
+push eax
+push ebx
+push ecx
+cmp shead,4 ;check for two elements
+jl exit_exchange
+mov eax,0
+call popfunc
+mov ebx,eax
+call popfunc
+mov ecx,eax
+mov eax,ebx
+call pushs
+mov eax,ecx
+call pushs
+exit_exchange:
+pop ecx
+pop ebx
+pop eax
+ret
 exchs ENDP
 
 ;
 ;neg macro
 ;
 negs PROC
-
+push eax
+mov eax,0
+call popfunc
+neg eax
+call pushs
+pop eax
+ret
 negs ENDP
 
 ;
@@ -247,6 +271,7 @@ views ENDP
 ;clear stack macro
 ;
 clears PROC
+push eax
 
 clears ENDP
 
