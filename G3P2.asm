@@ -385,12 +385,13 @@ push edi
   mov ebx, 1
 
   ;shift and add
-  imul ebx, 10
+  imul edx, 10
   add edx,eax
   inc edi
   cmp edi, charred
   jl PNLOOP
   mov eax, edx
+  call WriteInt
   jmp fin
 invalid:
   mov ebx,2
@@ -398,6 +399,7 @@ invalid:
 valid:
   mov ebx,0
 fin:
+  
   pop edi
   ret
 checkOp ENDP
