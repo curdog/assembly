@@ -57,7 +57,8 @@ Begin:
 
 	cmp ebx,2			;check to see if there was an invalid input
 	je ShowInvalid
-	cmp ebx,1			;check for number
+	cmp ebx,1
+	je PushNumber			;check for number
 	jmp Begin			;continue the loop until user exists
 ShowInvalid:
 	mov edx, offset promptInvalid
@@ -378,7 +379,7 @@ push edi
 ;check for 'Q' or 'q'
   ckEqual 'Q', stahp
   ckEqual 'q', stahp
-  
+  push edx
  ;check digit
   mov edi, 0
   mov edx, 0
@@ -407,7 +408,8 @@ push edi
   cmp edi, charred
   jl PNLOOP
   mov eax, edx
-  call WriteInt
+  pop edx
+  
   jmp fin
 invalid:
   mov ebx,2
