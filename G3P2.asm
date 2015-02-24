@@ -170,15 +170,23 @@ subs ENDP
 divs PROC
 	push eax
 	push ebx
+	push ecx
+	push edx
 	push edi
 
+	;ready for idiv
+	mov edx, 0
+	call popfunc
+	mov ecx,eax
 	call popfunc
 	mov ebx,eax
-	call popfunc
-	idiv eax
+	mov eax, ecx
+	idiv ebx
 	call pushs
 
 	pop edi
+	pop edx
+	pop ecx
 	pop ebx
 	pop eax
 	ret
