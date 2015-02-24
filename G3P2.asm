@@ -196,7 +196,25 @@ divs ENDP
 ;mul macro
 ;
 muls PROC
+	push eax
+	push ebx
+	push ecx
+	push edx
+	push edi
 
+	;ready for imul
+	call popfunc
+	mov edx,eax
+	call popfunc
+	imul edx
+	call pushs
+	
+	pop edi
+	pop edx
+	pop ecx
+	pop ebx
+	pop eax
+	ret
 muls ENDP
 
 ;
