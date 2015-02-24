@@ -376,9 +376,7 @@ push edi
 ;check for 'C' or 'c'
   ckEqual 'C', clears
   ckEqual 'c', clears
-;check for 'Q' or 'q'
-  ckEqual 'Q', stahp
-  ckEqual 'q', stahp
+
   push edx
  ;check digit
   mov edi, 0
