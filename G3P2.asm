@@ -28,7 +28,7 @@ promptMenu byte "Enter an input to add onto the stack",LF,CR,
 	   "Q: quit the program",LF,CR,0
 
 promptInvalid byte "Invalid input",LF,CR,0
-
+charred dword 0
 .code
 
 ;
@@ -41,7 +41,11 @@ main PROC
 Begin:
 	mov edx, offset promptMenu
 	call WriteString
-	call ReadString		;get input in eax
+	
+  mov edx, OFFSET buffer
+  mov ecx, sizeof buffer
+	call ReadString
+	mov charred,eax		;get input
 	call checkOp		;test to see if it was a valid input
 	cmp eax,'q'
 	je Fin
@@ -242,16 +246,19 @@ ckEqual MACRO char, func
   cmp eax,char
   jnz nit
   call func
-  ;jmp fin
+  jmp fin
   nit:
 ENDM
 
 ;check if an ascii value is a valid operation
 ;valid operations: +,-,*,/,X,N,U,D,V,C,Q
 ;input is in eax
-;@return 1 in ebx if value is digit, otherwise 0
+;@return value in eax if value is digit, 0 in ebx if not a number
 checkOp PROC
-  mov ecx,0
+push edi
+ ;get top of buffer
+  mov edi,0
+  movzx eax, buffer[edi]
 ;check for '+'
   ckEqual '+', adds
 ;check for '-'
@@ -281,15 +288,37 @@ checkOp PROC
 ;check for 'Q' or 'q'
   ckEqual 'Q', stahp
   ckEqual 'q', stahp
-;check to see if the zero bit was set at any point
-  cmp ecx,64h
-  jz  valid
+
+ ;check digit
+  PNLOOP: nop
+  mov eax,0
+  mov al, buffer[edi]
+  mov ecx, eax
+  
+  ;check for number col
+  and ecx, 30h
+  cmp ecx, 30h
+  jg invalid
+  
+  ;check for number row
+  and eax, 0Fh
+  cmp eax, 9
+  jg invalid
+
+  ;shift and add
+  imul ebx, 10
+  add ebx,eax
+  inc edi
+  cmp edi, charred
+  jl PNLOOP
+
 invalid:
   mov ebx,0
   jmp fin
 valid:
   mov ebx,1
 fin:
+  pop edi
   ret
 checkOp ENDP
 
