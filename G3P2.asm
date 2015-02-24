@@ -15,7 +15,7 @@ CR equ 0Dh
 LF equ 0Ah
 buffersize equ 41
 dstack dword 8 DUP(0)
-shead dword 0
+
 buffer byte buffersize dup(0)
 promptMenu byte "Enter an input to add onto the stack",LF,CR,
  "+ - * /: relative mathematical operations",LF,CR,
@@ -29,6 +29,7 @@ promptMenu byte "Enter an input to add onto the stack",LF,CR,
 
 promptInvalid byte "Invalid input",LF,CR,0
 charred dword 0
+shead dword 0
 .code
 
 ;
