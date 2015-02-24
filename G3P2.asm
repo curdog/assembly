@@ -3,7 +3,7 @@ TITLE Assembly Program 1  by Group 3
 ; Description:    Assembly Program 1
 ; Class:          CSC
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
-; Revision date:  2/2
+; Revision date:  2/23
 
 Include Irvine32.inc
 .386
@@ -21,7 +21,7 @@ promptMenu byte "Enter an input to add onto the stack",LF,CR,
  "+ - * /: relative mathematical operations",LF,CR,
   "X: exchange top two elements of the stack",LF,CR,
    "N: negate top element of stack",LF,CR,
-    "U: roll the stack up",LF,CR, 
+    "U: roll the stack up",LF,CR,
 	"D: roll stack down",LF,CR,
 	 "V: view all 8 elements of the stack",LF,CR,
 	  "C: clear the stack",LF,CR,
@@ -41,7 +41,10 @@ main PROC
 Begin:
 	mov edx, offset promptMenu
 	call WriteString
+	mov edx, OFFSET buffer
+	mov ecx, sizeof buffer
 	call ReadString		;get input in eax
+	movzx eax, buffer[0]
 	call checkOp		;test to see if it was a valid input
 	cmp eax,'q'
 	je Fin
@@ -215,9 +218,26 @@ rolld ENDP
 
 ;
 ;view stack macro
+;prints out the contents of the stack
 ;
 views PROC
+	push eax
+	push ebx
+	push esi
 
+	mov esi,0
+PopStack:
+	imul esi,STACKDATASIZE		;calculate for the next esi result in eax
+	mov eax,dstack[eax]			;grab the contents at the index specified
+	call WriteInt				;display the contents of the stack
+	call Crlf
+	inc esi
+	cmp esi,8					;are we at the end of the stack
+	jle PopStack
+
+	pop esi
+	pop ebx
+	pop eax
 views ENDP
 
 ;
@@ -229,9 +249,9 @@ clears ENDP
 
 ;
 ;stahp procedure
+;empty procedure for a placeholder for the exit function
 ;
 stahp PROC
-
 stahp ENDP
 
 
