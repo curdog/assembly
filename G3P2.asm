@@ -67,8 +67,6 @@ ShowInvalid:
 PushNumber:
 	call pushs
 	jmp Begin
-;keep the program open so user has the time to 
-;think about what he has done. 
 Fin:
 	INVOKE ExitProcess,0
 main ENDP
@@ -77,8 +75,7 @@ main ENDP
 ;pop procedure
 ;result in eax
 ;
-popfunc PROC 
-	push eax
+popfunc PROC
 	push ebx
 
 	cmp shead,0
@@ -110,7 +107,6 @@ ERROR: nop
 	call dispError
 Cont:
 	pop ebx
-	pop eax
 	ret
 popfunc ENDP
 
@@ -316,6 +312,7 @@ rollu ENDP
 ;
 ;roll down
 ;
+rolld PROC
 	push eax
 	push ebx
 	push esi
@@ -350,8 +347,6 @@ cdone:
 	pop ebx
 	pop eax
 	ret
-rolld PROC
-
 rolld ENDP
 
 ;
