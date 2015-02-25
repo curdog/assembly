@@ -90,7 +90,6 @@ popfunc PROC
 ERROR: nop
 	call dispError
 Cont:
-	call WriteInt				;;;;;;
 	pop ebx
 	ret
 popfunc ENDP
@@ -131,12 +130,16 @@ adds PROC
 	push ebx
 	push edi
 
+	;check if there are at least two items in the stack
+	cmp shead,1
+	jl AddsFin
 	call popfunc
 	mov ebx,eax
 	call popfunc
 	add eax, ebx
 	call pushs
 
+AddsFin:
 	pop edi
 	pop ebx
 	pop eax
@@ -151,12 +154,16 @@ subs PROC
 	push ebx
 	push edi
 
+	;check if there are at least two items in the stack
+	cmp shead,1
+	jl SubsFin
 	call popfunc
 	mov ebx,eax
 	call popfunc
 	sub eax, ebx
 	call pushs
 
+SubsFin:
 	pop edi
 	pop ebx
 	pop eax
@@ -173,6 +180,9 @@ divs PROC
 	push edx
 	push edi
 
+	;check if there are at least two items in the stack
+	cmp shead,1
+	jl DivsFin
 	;ready for idiv
 	mov edx, 0
 	call popfunc
@@ -183,6 +193,7 @@ divs PROC
 	idiv ebx
 	call pushs
 
+DivsFin:
 	pop edi
 	pop edx
 	pop ecx
@@ -201,6 +212,9 @@ muls PROC
 	push edx
 	push edi
 
+	;check if there are at least two items in the stack
+	cmp shead,1
+	jl MulsFin
 	;ready for imul
 	call popfunc
 	mov edx,eax
@@ -208,6 +222,7 @@ muls PROC
 	imul eax,edx
 	call pushs
 	
+MulsFin:
 	pop edi
 	pop edx
 	pop ecx
