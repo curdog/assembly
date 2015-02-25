@@ -87,25 +87,10 @@ popfunc PROC
 	mov dstack[eax],0				;clear contents of stack that we popped
 	mov eax,ebx						;will return eax
 	jmp Cont
-	;
-	;cmp shead, 0
-	push edi
-	mov eax,shead
-	inc eax
-;check size
-	cmp eax, 8
-	jge ERROR
-	mov shead,eax
-	imul eax, STACKDATASIZE
-	mov edi,eax
-	pop eax
-	mov dstack[edi], eax
-	pop edi
-	clc
-	ret
 ERROR: nop
 	call dispError
 Cont:
+	call WriteInt				;;;;;;
 	pop ebx
 	ret
 popfunc ENDP
@@ -147,10 +132,8 @@ adds PROC
 	push edi
 
 	call popfunc
-	call WriteInt		;;;;
 	mov ebx,eax
 	call popfunc
-	call WriteInt		;;;;
 	add eax, ebx
 	call pushs
 
@@ -237,25 +220,25 @@ muls ENDP
 ;exch macro
 ;
 exchs PROC
-push eax
-push ebx
-push ecx
-cmp shead,4 ;check for two elements
-jl exit_exchange
-mov eax,0
-call popfunc
-mov ebx,eax
-call popfunc
-mov ecx,eax
-mov eax,ebx
-call pushs
-mov eax,ecx
-call pushs
+	push eax
+	push ebx
+	push ecx
+	
+	mov eax,0
+	call popfunc
+	mov ebx,eax
+	call popfunc
+	mov ecx,eax
+	mov eax,ebx
+	call pushs
+	mov eax,ecx
+	call pushs
+
 exit_exchange:
-pop ecx
-pop ebx
-pop eax
-ret
+	pop ecx
+	pop ebx
+	pop eax
+	ret
 exchs ENDP
 
 ;
@@ -272,7 +255,7 @@ ret
 negs ENDP
 
 ;
-;roll up macro
+;roll up procedure
 ;
 rollu PROC
 	push eax
@@ -315,35 +298,29 @@ rollu ENDP
 rolld PROC
 	push eax
 	push ebx
+	push ecx
+	push edx
 	push esi
-	mov esi,0
-	mov eax,shead
-	cmp eax,0
-	je proces ;skip copytemp
-	mov esi,shead
-copy_temp: ;copy to temp
-	cmp esi,0
-	jl rolldown
-	mov ebx,dstack[esi]
-	sub esi,4
-	mov tempstack[esi],ebx
-	jmp copy_temp
-rolldown: 	 ;only bottom of dstack remains
-	mov eax,shead
-proces:            ;move bottom of dstack to tempstack top
-	mov ebx,dstack[0]    
-	mov tempstack[eax],ebx
-	mov esi,0
-	mov eax,shead
-copy_back: ;copy from tempstack to dstack
-	cmp esi,eax
-	jg cdone
-	mov ebx,tempstack[esi]
-	mov dstack[esi],ebx
-	add esi,4
-	jmp copy_back
-cdone:
+	
+	call popfunc		;pop the top element of the stack off to put into the first stack
+	push eax			;temporarily push the contents of the top of the stack into the stack
+	mov edx,shead		;the index will be in edx
+ShiftDown:
+	imul edx,STACKDATASIZE				;calculate the offset
+	mov ebx,eax							;copy the contents into ebx so you can copy the offset as well
+	sub ebx,STACKDATASIZE				;subtract the offset value for the next stack value
+	mov ebx,dstack[ebx]
+	mov dstack[eax],ebx					;exchange the top elements
+	dec edx
+	cmp edx,1
+	jge ShiftDown
+	pop ecx				;pull the temp stack data from the stack
+	mov dstack[0],ecx
+
+RolldFin:
 	pop esi
+	pop edx
+	pop ecx
 	pop ebx
 	pop eax
 	ret
