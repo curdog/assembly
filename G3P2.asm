@@ -258,38 +258,25 @@ negs ENDP
 ;roll up procedure
 ;
 rollu PROC
-	push eax
-	push ebx
-	push esi
+pushad
+mov esi,0
+mov edx,0
+
+rollit:
+	mov eax,dstack[esi]
+	mov dstack[esi],edx
+	mov edx,eax
+	add esi, sizeof sdword
+	cmp esi,STACKDATASIZE*sizeof sdword
+	je onemore
+	jmp rollit
+	
+onemore:
 	mov esi,0
-	mov eax,shead
-	cmp eax,0
-	je proces ;skip copytemp
-copy_temp: ;copy to temp
-	cmp esi,eax
-	jg rolltop ;jump when all but top is copied
-	mov ebx,dstack[esi]
-	add esi,4
-	mov tempstack[esi],ebx
-	jmp copy_temp
-rolltop:
-proces:
-	mov ebx,dstack[eax]
-	mov tempstack[0],ebx
-	mov esi,0
-	mov eax,shead
-copy_back: ;copy from temp to dstack
-	cmp esi,eax
-	jg cdone
-	mov ebx,tempstack[esi]
-	mov dstack[esi],ebx
-	add esi,4
-	jmp copy_back
-cdone:
-	pop esi
-	pop ebx
-	pop eax
-	ret
+	mov dstack[esi],edx
+
+popad
+ret
 rollu ENDP
 
 ;
