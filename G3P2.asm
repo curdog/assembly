@@ -298,33 +298,32 @@ rollu ENDP
 ;roll down
 ;
 rolld PROC
-	push eax
-	push ebx
-	push ecx
-	push edx
-	push esi
+	pushad  ;save all
 	
-	call popfunc		;pop the top element of the stack off to put into the first stack
-	push eax			;temporarily push the contents of the top of the stack into the stack
-	mov edx,shead		;the index will be in edx
-ShiftDown:
-	imul edx,STACKDATASIZE				;calculate the offset
-	mov ebx,eax							;copy the contents into ebx so you can copy the offset as well
-	sub ebx,STACKDATASIZE				;subtract the offset value for the next stack value
-	mov ebx,dstack[ebx]
-	mov dstack[eax],ebx					;exchange the top elements
-	dec edx
-	cmp edx,1
-	jge ShiftDown
-	pop ecx				;pull the temp stack data from the stack
-	mov dstack[0],ecx
+	cmp shead, 0    ;1 or no data
+	jle RolldFin
 
-RolldFin:
-	pop esi
-	pop edx
-	pop ecx
-	pop ebx
-	pop eax
+	;save the bottom
+	mov edi, 0
+	mov edx, dstack[edi]
+	mov eax, 0           ;previous spot
+RolldL: nop
+	add edi, 4 ;get next element
+	cmp edi, 32             ;check bounds 
+	je AddbL         
+	mov ebx, dstack[edi] 
+	mov dstack[eax], ebx   ;move element down 1
+	add eax, 4            ;up location
+	jmp RolldL
+AddbL: nop
+	mov eax, shead
+	;sub eax, 1
+	imul eax, 4
+	mov edi, eax   
+	;sub edi, 4
+	mov dstack[edi],edx;put back
+RolldFin: nop
+	 popad ;popall
 	ret
 rolld ENDP
 
