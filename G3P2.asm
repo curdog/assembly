@@ -269,29 +269,49 @@ pop eax
 ret
 negs ENDP
 
+
+rollu PROC
 ;
 ;roll up procedure
 ;
-rollu PROC
-pushad
-mov esi,0
-mov edx,0
-
-rollit:
-	mov eax,dstack[esi]
-	mov dstack[esi],edx
-	mov edx,eax
-	add esi, sizeof sdword
-	cmp esi,STACKDATASIZE*sizeof sdword
-	je onemore
-	jmp rollit
+pushad  ;save all
 	
-onemore:
-	mov esi,0
-	mov dstack[esi],edx
+	cmp shead, 0    ;1 or no data
+	jle RolluFin
 
-popad
-ret
+	;save the top
+	mov edi, shead
+	imul edi,4
+	mov edx, dstack[edi]
+	push edx
+	
+	imul ecx, shead, 4
+	mov eax, 28			;next spot
+	mov edi, 28           ;old spot
+RolluL: nop
+	sub edi, 4 ;get next element
+	cmp edi, -4             ;check bounds 
+	je AddbU         
+	mov ebx, dstack[edi] 
+	mov dstack[eax], ebx   ;move element down 1
+	sub eax, 4            ;up location
+	jmp RolluL
+
+AddbU: nop
+	pop edx
+	mov edi,0 ; put bottom back
+	mov dstack[edi], edx
+	;clear top crap
+	mov edi, shead
+	mov eax, edi
+	inc eax
+	imul eax,4
+	mov edi,eax
+	mov dstack[edi],0
+
+RolluFin: nop
+	 popad ;popall
+	ret
 rollu ENDP
 
 ;
