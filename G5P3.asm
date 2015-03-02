@@ -76,10 +76,35 @@ main ENDP
 
 ;
 ;cmpString macro
-;compares two strings and executes an appropriate procedure if they are equal
-;
-cmpString MACRO str1,str2,func
-ENDM
+;compares two strings zf = 0 equal zf = 1 not equal
+;strings must be null term
+; esi - str1 base
+; edi - str2 base
+;WARNING: function contains multiple exit points
+cmpString PROC
+	pushad
+Start:	nop
+	mov al, [esi]
+	mov ah, [edi]
+	cmp ah, al		;compare chars
+	jne NotEqual		;quit early NOTE: will quit if one is NULL and other not
+	cmp ah, NULL		;end of string and equal
+	je Equal		
+	inc esi
+	inc edi
+	jmp Start
+	
+NotEqu: nop 			;equal case
+	popad
+	sez
+	ret
+	
+Equal:	nop			;not equal case
+	popad
+	clz
+	ret
+	
+cmpString PROC
 
 ;
 ;switchCmd
