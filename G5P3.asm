@@ -20,7 +20,7 @@ ExitProcess PROTO, dwExistCode:DWORD
 	cmdShow byte "show",0
 	cmdStep byte "step",0
 	cmdChange byte "change",0
-	inBuffer byte 30
+	inBuffer byte 30 dup(0)
 	helpMenu byte "Here are commands ,their parameters, and what they do",CR,LF,
 		"Quit: quits the program",CR,LF,
 		"Help: displays this help prmopt",CR,LF,
@@ -70,19 +70,19 @@ ENDM
 ;
 normStr MACRO str
 	push edi
-	mov edi, [str]
+mov edi, edx
 	dec edi			;decrement because the first instruction is increment
 normCont:
 	inc edi
-	cmp edi,5Ah			;compare to 'Z'
+	cmp byte ptr [edi],'Z'			;compare to 'Z'
 	jg normCont			;is a lower case letter, or the ascii values that don't get manipulated, regardless, no action
-	cmp edi,41h			;compare to 'A'
+	cmp byte ptr [edi],'A'			;compare to 'A'
 	jge normMask		;is an uppercase letter and needs masked
-	cmp edi,0			;is a null terminator 
+	cmp byte ptr [edi],0			;is a null terminator 
 	je normFin
 	jmp normCont		;you aren't finished processing the string and need to continue
 normMask:
-	add edi,20h
+	add byte ptr [edi],' '
 	jmp normCont
 normFin:
 	pop edi
