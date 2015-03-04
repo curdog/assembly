@@ -33,46 +33,60 @@ ExitProcess PROTO, dwExistCode:DWORD
 		"Change <name> <priority>: changes the priority of a process",CR,LF,0
 	errorMsg byte "An error occured while processing your request",CR,LF,0
 	errorMsgInput byte "You have entered an invalid command",CR,LF,0
-
 .code
+;macros
+
+;
+;print
+;takes in a string literal and prints it out
+;@text a string literal to pass
+;
+print MACRO text
+	LOCAL str
+	.data
+	str byte text,0
+	.code
+	mov edx, offset str
+	call WriteString
+ENDM
+
+;
+;println
+;takes in a string literal and prints it out along with a CR and LF
+;@text a string literal to pass
+;
+println MACRO text
+	LOCAL str
+	.data
+	str byte text,0Dh,0Ah,0
+	.code
+	mov edx, offset str
+	call WriteString
+ENDM
+
 ;
 ;normStr
 ;converts all characters in the string to lowercase
 ;
 normStr MACRO str
 	push edi
-	mov edi,-1
+	mov edi, [str]
+	dec edi			;decrement because the first instruction is increment
 normCont:
 	inc edi
-	cmp str[edi],5Ah		;compare to 'Z'
-	jg normCont				;is a lower case letter, or the ascii values that don't get manipulated, regardless, no action
-	cmp str[edi],41h		;compare to 'A'
-	jge normMask			;is an uppercase letter and needs masked
-	cmp str[edi],0			;is a null terminator 
+	cmp edi,5Ah			;compare to 'Z'
+	jg normCont			;is a lower case letter, or the ascii values that don't get manipulated, regardless, no action
+	cmp edi,41h			;compare to 'A'
+	jge normMask		;is an uppercase letter and needs masked
+	cmp edi,0			;is a null terminator 
 	je normFin
-	jmp normCont			;you aren't finished processing the string and need to continue
+	jmp normCont		;you aren't finished processing the string and need to continue
 normMask:
-	add str[edi],20h
+	add edi,20h
 	jmp normCont
 normFin:
 	pop edi
 ENDM
-
-;
-;main procedure
-;
-main PROC
-MainStart:
-	call dispHelp
-	mov edx, OFFSET inBuffer		;set everything up for ReadString
-	mov ecx, sizeof inBuffer
-	call ReadString
-	normStr inBuffer				;normalize the inBuffer to all lowercase letters
-	mov edx, offset inBuffer
-	call WriteString
-	call Crlf
-	jmp MainStart					;infinite loop until user types 'quit'
-main ENDP
 
 ;
 ;cmpString macro
@@ -87,7 +101,7 @@ Start:	nop
 	mov al, [esi]
 	mov ah, [edi]
 	cmp ah, al		;compare chars
-	jne NotEqual		;quit early NOTE: will quit if one is NULL and other not
+	jne NotEqu		;quit early NOTE: will quit if one is NULL and other not
 	cmp ah, NULL		;end of string and equal
 	je Equal		
 	inc esi
@@ -96,15 +110,15 @@ Start:	nop
 	
 NotEqu: nop 			;equal case
 	popad
-	sez
+	;sez
 	ret
 	
 Equal:	nop			;not equal case
 	popad
-	clz
+	;clz
 	ret
 	
-cmpString PROC
+cmpString ENDP
 
 ;
 ;switchCmd
@@ -113,7 +127,6 @@ cmpString PROC
 ;
 switchCmd PROC
 	;check for exit
-	cmpString inBuffer,quit,exitProgram
 switchCmd ENDP
 
 ;
@@ -152,5 +165,21 @@ dispErrorMsg PROC
 	pop edx
 	ret
 dispErrorMsg ENDP
+
+;
+;main procedure
+;
+main PROC
+MainStart:
+	call dispHelp
+	mov edx, OFFSET inBuffer		;set everything up for ReadString
+	mov ecx, sizeof inBuffer
+	call ReadString
+	normStr inBuffer				;normalize the inBuffer to all lowercase letters
+	mov edx, offset inBuffer
+	call WriteString
+	call Crlf
+	jmp MainStart					;infinite loop until user types 'quit'
+main ENDP
 
 END main
