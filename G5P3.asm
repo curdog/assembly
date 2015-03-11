@@ -14,6 +14,9 @@ ExitProcess PROTO, dwExistCode:DWORD
 	LF equ 0Ah
 	flag byte 1 dup(0)
 	inBuffer byte 30 dup(0)
+	firstParam byte 30 dup(0)
+	secParam byte 30 dup(0)
+	thirdParam byte 30 dup(0)
 	helpMenu byte "Here are commands ,their parameters, and what they do",CR,LF,
 		"Quit: quits the program",CR,LF,
 		"Help: displays this help prmopt",CR,LF,
@@ -78,7 +81,6 @@ normMask:
 normFin:
 	pop edi
 ENDM
-
 ;
 ;cmpStrFunc
 ;compares two strings, and if they are equal then executes the function passed to the macro
@@ -103,10 +105,67 @@ cmpStrFunc MACRO str1,str2,func
 notEqual:
 	nop
 ENDM
+;
+;nullFill
+;fills an array with 0s
+;@arr the array to fill
+;@size the size of the array
+;
+nullFill MACRO arr,sizeOfData
+	LOCAL loop1
+	push edi
+	mov edi,0
+loop1:
+	mov arr[edi],0
+	inc edi
+	dec sizeOfData
+	cmp sizeOfData,0
+	jne loop1
+	pop edi
+ENDM
 
 ;
 ;PROCEDURES
 ;
+
+;
+;getFirstParam
+;retrieves the first parameter of the string stored in edi
+;stores the first parameter in the byte variable 'firstParam'
+;to set up:
+;mov edi, offset str
+;@return eax=1 if success eax=0 if failure
+;
+getFirstParam PROC
+	LOCAL skipToFirst
+	;position edi to the start of the parameter
+	mov eax,1
+	dec edi			;decrement to account for first inc
+gfpskipToFirst:		;set edi to the start of the first letter of the string
+	inc edi
+	movzx ax,byte ptr [edi]
+	cmp ax,' '
+	jne gfpskipToFirst
+	cmp ax,0
+	je gfpError
+	;can start copying the string
+	inc edi							;increment edi to the next character, it's a space right now
+	mov esi, offset firstParam
+gfpcopy:
+	movzx ax,byte ptr [edi]
+	mov [esi],ax
+	cmp ax,' '
+	je gfpFin
+	cmp ax,0
+	je gfpFin
+	inc edi
+	inc esi
+	jmp gfpcopy
+gfpError:
+	mov eax,0
+gfpFin:
+	ret
+getFirstParam ENDP
 
 ;
 ;cmpString procedure
@@ -153,6 +212,7 @@ switchCmd PROC
 	cmpStrFunc inBuffer,"show",cmdShow			;check for show
 	cmpStrFunc inBuffer,"step",cmdStep			;check for step
 	cmpStrFunc inBuffer,"change",cmdChange		;check for change
+	cmpStrFunc inbuffer,"hold",cmdHold			;check for hold
 	cmp flag,0
 	jne switchCmdFin							;falls through if none of the commands were executed
 	println "Invalid command entered, enter 'help' for a list of available commands"
@@ -168,7 +228,6 @@ switchCmd ENDP
 exitProgram PROC
 	INVOKE ExitProcess,0
 exitProgram ENDP
-
 
 ;
 ;dispHelp procedure
@@ -187,14 +246,30 @@ dispHelp ENDP
 
 ;
 ;cmdLoad
+;needs 3 parameters <name> <priority> <load_time>
 ;
 cmdLoad PROC
-	println "cmdLoad placeholder"
+	mov eax,30
+	nullFill firstParam,eax
+	mov edi,offset inBuffer
+	call getFirstParam				;retrieve the first parameter
+	;mov edx,offset firstParam
+	;call WriteString
 	ret
 cmdLoad ENDP
 
 ;
+;cmdHold
+;needs 1 parameter <name>
+;
+cmdHold PROC
+	println "cmdHold placeholder"
+	ret
+cmdHold ENDP
+
+;
 ;cmdRun
+;needs 1 parameter <name>
 ;
 cmdRun PROC
 	println "cmdRun placeholder"
@@ -203,6 +278,7 @@ cmdRun ENDP
 
 ;
 ;cmdKill
+;needs 1 parameter <name>
 ;
 cmdKill PROC
 	println "cmdKill placeholder"
@@ -211,6 +287,7 @@ cmdKill ENDP
 
 ;
 ;cmdShow
+;0 parameters
 ;
 cmdShow PROC
 	println "cmdShow placeholder"
@@ -219,6 +296,7 @@ cmdShow ENDP
 
 ;
 ;cmdStep
+;needs 1 parameter <n>
 ;
 cmdStep PROC
 	println "cmdStep placeholder"
@@ -227,6 +305,7 @@ cmdStep ENDP
 
 ;
 ;cmdChange
+;needs 2 parameters <name> <priority>
 ;
 cmdChange PROC
 	println "cmdChange placeholder"
@@ -238,7 +317,7 @@ cmdChange ENDP
 ;
 main PROC
 MainStart:
-	print ": "						;prompt the user for entry
+	print ":"						;prompt the user for entry
 	mov edx, OFFSET inBuffer		;set everything up for ReadString
 	mov ecx, sizeof inBuffer
 	call ReadString
