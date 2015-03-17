@@ -17,6 +17,15 @@ ExitProcess PROTO, dwExistCode:DWORD
 	firstParam byte 30 dup(0)
 	secParam byte 30 dup(0)
 	thirdParam byte 30 dup(0)
+	byteTemp byte 1 dup(0)
+	wordTemp word 1 dup(0)
+	priority equ 1				;priority contains 1 byte	(byte 1)
+	hold equ 2					;hold contains 1 byte		(byte 2)
+	runtime equ 3				;runtime contains a word	(byte 3-4)
+	namesize equ 5				;namesize contains 10 bytes	(byte 5-15)
+	indexsize equ 15			;size of each data structure index
+	program byte 150 dup(0)
+	index byte 1 dup(0)
 	helpMenu byte "Here are commands ,their parameters, and what they do",CR,LF,
 		"Quit: quits the program",CR,LF,
 		"Help: displays this help prmopt",CR,LF,
@@ -127,6 +136,36 @@ ENDM
 ;
 ;PROCEDURES
 ;
+
+;
+;skipWhiteSpace
+;@edi the pointer to the string you need to skip over whitespace
+;
+skipWhiteSpace PROC
+	dec edi
+skipWhite:
+	inc edi
+	movzx eax,byte ptr [edi]
+	cmp eax,' '				;check if edi's contents are equal to space
+	je skipWhite
+	cmp eax,'	'			;check if edi's contents are equal to tab
+	je skipWhite
+	ret
+skipWhiteSpace ENDP
+
+;
+;nullParams
+;fills the parameter variables with 0s
+;
+nullParams PROC
+	mov eax,30
+	nullFill firstParam,eax
+	mov eax,30
+	nullFill secParam,eax
+	mov eax,30
+	nullFill thirdParam,eax
+	ret
+nullParams ENDP
 
 ;
 ;getSecondParam
@@ -337,10 +376,12 @@ getOneParam PROC
 	mov eax,30
 	nullFill firstParam,eax
 	mov edi, offset inBuffer
+	call skipWhiteSpace			;skip the initial whitespace
 	call getFirstParam
 	cmp ebx,0
 	je firstParamError
-	cmp firstParam[5],0			;check to see if there was a null character after the command
+	movzx eax,inBuffer[5]
+	cmp inBuffer[5],10			;check to see if there was a LF character after the command
 	je firstParamError
 	jmp firstParamNoError
 firstParamError:
@@ -354,17 +395,12 @@ getOneParam ENDP
 
 ;
 ;cmdLoad
-;needs 3 parameters <name> <priority> <load_time>
+;needs 3 parameters <name> <priority> <run_time>
 ;
 cmdLoad PROC
 	println "Load command entered"
 	;clear the parameter variables
-	mov eax,30
-	nullFill firstParam,eax
-	mov eax,30
-	nullFill secParam,eax
-	mov eax,30
-	nullFill thirdParam,eax
+	call nullParams					;fill the parameters with 0s
 	;get and error check the parameter variables from the inBuffer
 	mov edi,offset inBuffer
 	call getFirstParam				;retrieve the first parameter
@@ -405,7 +441,8 @@ noParamError:
 	println " "
 	mov edx,offset thirdParam
 	call WriteString
-	;start processing load command
+	call Crlf
+	;;;start processing load command
 	ret
 cmdLoad ENDP
 
@@ -417,6 +454,9 @@ cmdHold PROC
 	println "Hold command entered"
 	call getOneParam
 	;start processing hold command
+	mov edx,offset firstParam
+	call WriteString
+	call Crlf
 	ret
 cmdHold ENDP
 
@@ -443,6 +483,10 @@ firstParamError:
 	call ReadString
 firstParamNoError:
 	println "No errors in processing parameters"
+	;display the parameter
+	mov edx, offset firstParam
+	call WriteString
+	call Crlf
 	;start processing data for run command
 	ret
 cmdRun ENDP
@@ -452,8 +496,14 @@ cmdRun ENDP
 ;needs 1 parameter <name>
 ;
 cmdKill PROC
+	mov eax,30
+	nullFill firstParam,eax
 	println "Kill command entered"
 	call getOneParam
+	;display the parameters
+	mov edx,offset firstParam
+	call WriteString
+	call Crlf
 	ret
 cmdKill ENDP
 
@@ -462,7 +512,36 @@ cmdKill ENDP
 ;0 parameters
 ;
 cmdShow PROC
+	.data
+	strTemp byte 11 dup(0)			;used to hold name
+	.code
 	println "Show command entered"
+	movzx eax,program[0]
+	cmp eax,0
+	je noEntries
+	mov edi,0
+copyName:
+	movzx esi,index
+	add esi,namesize
+	add esi,edi
+	movzx eax,program[esi]
+	movzx ebx,strTemp[edi]
+	mov ebx,eax
+	inc edi
+	cmp edi,10
+	jle copyName
+	print "Name: "
+	mov edx,offset strTemp
+	call WriteString
+	;process priority
+	;process hold
+	;process run_time
+
+	;jump back up to next program entry if not done
+	jmp cmdShowDone
+noEntries:
+	println "There are no entries for jobs"
+cmdShowDone:
 	ret
 cmdShow ENDP
 
@@ -471,8 +550,14 @@ cmdShow ENDP
 ;needs 1 parameter <n>
 ;
 cmdStep PROC
+	mov eax,30
+	nullFill firstParam,eax
 	println "Step command entered"
 	call getOneParam
+	;display the parameter
+	mov edx,offset firstParam
+	call WriteString
+	call Crlf
 	ret
 cmdStep ENDP
 
@@ -482,8 +567,7 @@ cmdStep ENDP
 ;
 cmdChange PROC
 	println "Change command entered"
-	mov eax,30
-	nullFill firstParam,eax
+	call nullParams
 	mov edi, offset inBuffer
 	call getFirstParam
 	cmp ebx,0
@@ -506,8 +590,13 @@ secondParamError:
 	call ReadString
 firstParamNoError:
 	println "No errors in processing parameters"
+	;display the parameters
 	mov edx, offset firstParam
 	call WriteString
+	call Crlf
+	mov edx, offset secParam
+	call WriteString
+	call Crlf
 	ret
 cmdChange ENDP
 
@@ -515,6 +604,8 @@ cmdChange ENDP
 ;main procedure
 ;
 main PROC
+	println "Welcome to the diddly doodley OS simulator"
+	println "Type help to display a list of commands and what they do"
 MainStart:
 	print ":"						;prompt the user for entry
 	mov edx, OFFSET inBuffer		;set everything up for ReadString
