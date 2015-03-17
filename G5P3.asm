@@ -19,12 +19,12 @@ ExitProcess PROTO, dwExistCode:DWORD
 	thirdParam byte 30 dup(0)
 	byteTemp byte 1 dup(0)
 	wordTemp word 1 dup(0)
-	priority equ 1				;priority contains 1 byte	(byte 1)
-	hold equ 2					;hold contains 1 byte		(byte 2)
-	runtime equ 3				;runtime contains a word	(byte 3-4)
-	namesize equ 5				;namesize contains 10 bytes	(byte 5-15)
+	priority equ 11				;priority contains 1 byte	(byte 1)
+	hold equ 12					;hold contains 1 byte		(byte 2)
+	runtime equ 13				;runtime contains a word	(byte 3-4)
+	namesize equ 0				;namesize contains 10 bytes	(byte 5-15)
 	indexsize equ 15			;size of each data structure index
-	program byte 150 dup(0)
+	program byte 1400 dup(0)
 	index byte 1 dup(0)
 	helpMenu byte "Here are commands ,their parameters, and what they do",CR,LF,
 		"Quit: quits the program",CR,LF,
@@ -213,9 +213,11 @@ getSecondParam ENDP
 ;
 ;getFirstParam
 ;retrieves the first parameter of the string stored in edi
-;stores the first parameter in the byte variable 'firstParam'
+;stores the result in the variable pointed to by esi
 ;to set up:
 ;mov edi, offset str
+;mov esi, offset paramVariable
+;mov edx, param to get (1,2,or 3)
 ;@return ebx=1 if success ebx=0 if failure
 ;@return ecx=1 if not end of the string ecx=0 if end of string
 ;
@@ -223,6 +225,8 @@ getFirstParam PROC
 	;position edi to the start of the parameter
 	mov ebx,1
 	mov ecx,1
+gotovar:
+	call skipWhiteSpace
 	dec edi			;decrement to account for first inc
 gfpskipToFirst:		;set edi to the start of the first letter of the string
 	inc edi
@@ -232,14 +236,18 @@ gfpskipToFirst:		;set edi to the start of the first letter of the string
 	cmp ax,0
 	je gfpEndOfString
 	;can start copying the string
-	inc edi							;increment edi to the next character, it's a space right now
-	mov esi, offset firstParam
+	call skipWhiteSpace						;skip da white space
+	dec edx
+	cmp edx,0
+	jne gotovar
 gfpcopy:
 	movzx ax,byte ptr [edi]
 	mov [esi],ax
-	cmp ax,' '
+	cmp ax,' '			;compare to space
 	je gfpFin
-	cmp ax,0
+	cmp ax,'	'		;compare to tab
+	je gfpFin
+	cmp ax,0			;compare to null
 	je gfpEndOfString
 	inc edi
 	inc esi
@@ -398,6 +406,7 @@ getOneParam ENDP
 ;needs 3 parameters <name> <priority> <run_time>
 ;
 cmdLoad PROC
+	.code
 	println "Load command entered"
 	;clear the parameter variables
 	call nullParams					;fill the parameters with 0s
@@ -443,6 +452,24 @@ noParamError:
 	call WriteString
 	call Crlf
 	;;;start processing load command
+	movzx edi,program					;move the program data location into edi
+	sub edi,indexsize
+
+	jmp skiptocycle
+	;find the next blank entry to input program data
+nextBlankEntry:
+	add edi,indexsize					;go to the next program data location
+	movzx eax,byte ptr [edi]
+	cmp eax,0
+	jne nextBlankEntry
+
+skiptocycle:
+	mov edi,0
+cycle:
+	movzx eax,firstParam[edi]
+	inc edi
+	cmp edi,10
+	jle cycle
 	ret
 cmdLoad ENDP
 
@@ -512,27 +539,9 @@ cmdKill ENDP
 ;0 parameters
 ;
 cmdShow PROC
-	.data
-	strTemp byte 11 dup(0)			;used to hold name
-	.code
 	println "Show command entered"
-	movzx eax,program[0]
-	cmp eax,0
-	je noEntries
-	mov edi,0
-copyName:
-	movzx esi,index
-	add esi,namesize
-	add esi,edi
-	movzx eax,program[esi]
-	movzx ebx,strTemp[edi]
-	mov ebx,eax
-	inc edi
-	cmp edi,10
-	jle copyName
-	print "Name: "
-	mov edx,offset strTemp
-	call WriteString
+	mov index,0
+	;process name
 	;process priority
 	;process hold
 	;process run_time
@@ -568,8 +577,23 @@ cmdStep ENDP
 cmdChange PROC
 	println "Change command entered"
 	call nullParams
+	;get the first parameter
 	mov edi, offset inBuffer
+	mov esi, offset firstParam
+	mov edx, 1
 	call getFirstParam
+	cmp ebx,0
+	je firstParamError
+
+	;get the second parameter
+	mov edi, offset inBuffer
+	mov esi, offset secParam
+	mov edx, 2
+	call getFirstParam
+	cmp ebx,0
+	je secondParamError
+	jmp cmdChangePrint
+
 	cmp ebx,0
 	je firstParamError
 	cmp firstParam[6],0			;check to see if there was a null character after the command
@@ -591,6 +615,7 @@ secondParamError:
 firstParamNoError:
 	println "No errors in processing parameters"
 	;display the parameters
+cmdChangePrint:
 	mov edx, offset firstParam
 	call WriteString
 	call Crlf
