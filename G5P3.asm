@@ -139,17 +139,17 @@ ENDM
 
 ;
 ;isDigit
-;checks the string that it is a digit
-;@set up
-;mov edi, offset string
+;checks the string stored in edi to see if it has a digit value
+;@set up:
+;	mov edi, offset string
 ;@return eax=1 if string is a digit eax=0 if string is not a digit
 ;
-isDigit PROC
+isDigit1 PROC
 	mov eax,1		;will go to 0 if the character is not detected as a digit
 	dec edi			;set up so the auto increment doesn't increment to next
 goThroughString:
 	inc edi
-	mov bx,byte ptr [edi]
+	movzx bx,byte ptr [edi]
 	cmp bx,0
 	je isDigitDone
 	cmp bx,'0'			;compare to ascii 0
@@ -161,7 +161,7 @@ isNotADigit:
 	mov eax,0
 isDigitDone:
 	ret
-isDigit ENDP
+isDigit1 ENDP
 
 ;
 ;skipWhiteSpace
@@ -180,13 +180,29 @@ skipWhite:
 skipWhiteSpace ENDP
 
 ;
+;dispParams
+;
+dispParams PROC
+	mov edx,offset firstParam
+	call WriteString
+	println " "
+	mov edx,offset secParam
+	call WriteString
+	println " "
+	mov edx,offset thirdParam
+	call WriteString
+	call Crlf
+	ret
+dispParams ENDP
+
+;
 ;getParams
 ;retrieves the first parameter of the string stored in edi
 ;stores the result in the variable pointed to by esi
-;to set up:
-;mov edi, offset str
-;mov esi, offset paramVariable
-;mov edx, param to get (1,2,or 3)
+;@set up:
+;	mov edi, offset str
+;	mov esi, offset paramVariable
+;	mov edx, param to get (1,2,or 3)
 ;@return ebx=1 if success ebx=0 if failure
 ;@return ecx=1 if not end of the string ecx=0 if end of string
 ;
@@ -211,13 +227,13 @@ gfpskipToFirst:		;set edi to the start of the first letter of the string
 	jne gotovar
 gfpcopy:
 	movzx ax,byte ptr [edi]
-	mov [esi],ax
 	cmp ax,' '			;compare to space
 	je gfpFin
 	cmp ax,'	'		;compare to tab
 	je gfpFin
 	cmp ax,0			;compare to null
 	je gfpEndOfString
+	mov [esi],ax		;copy the contents
 	inc edi
 	inc esi
 	jmp gfpcopy
@@ -311,14 +327,17 @@ dispHelp ENDP
 ;
 cmdLoad PROC
 	println "Load command entered"
+	;get the first parameter
 	mov edi,offset inBuffer
 	mov esi,offset firstParam
 	mov edx,1
 	call getParams
+	;get the second parameter
 	mov edi,offset inBuffer
 	mov esi,offset secParam
 	mov edx,2
 	call getParams
+	;get the third parameter
 	mov edi,offset inBuffer
 	mov esi,offset thirdParam
 	mov edx,3
@@ -340,15 +359,30 @@ thirdParamError:
 	mov ecx, sizeof thirdParam
 	call ReadString
 noParamError:
-	mov edx,offset firstParam
-	call WriteString
-	println " "
+	call dispParams
+	;check to see if the second parameter entered is a digit
+Loop1:
+	mov edi,offset secParam
+	call isDigit1
+	cmp eax,1
+	je Loop2
+	print "Second parameter entered does not have a digit value, please enter a digit value: "
 	mov edx,offset secParam
-	call WriteString
-	println " "
+	mov ecx,sizeof secParam
+	call ReadString
+	jmp Loop1					;loop until a correct input is entered
+	;check to see if the third parameter is a digit value
+Loop2:
+	mov edi,offset thirdParam
+	call isDigit1
+	cmp eax,1
+	je parametersCorrect
+	print "Third parameter entered does not have a digit value, please enter a digit value: "
 	mov edx,offset thirdParam
-	call WriteString
-	call Crlf
+	mov ecx,sizeof thirdParam
+	call ReadString
+	jmp Loop2					;loop until a correct input is entered
+parametersCorrect:
 	;;;start processing load command
 	movzx edi,program					;move the program data location into edi
 	sub edi,indexsize
@@ -451,6 +485,7 @@ cmdStep PROC
 	mov eax,30
 	nullFill firstParam,eax
 	println "Step command entered"
+	;gete the first parameter
 	mov edi, offset inBuffer
 	mov esi, offset firstParam
 	mov edx,1
@@ -459,6 +494,19 @@ cmdStep PROC
 	mov edx,offset firstParam
 	call WriteString
 	call Crlf
+	;check to see if the first parameter is a digit
+cmdStepLoop1:
+	mov edi,offset firstParam
+	call isDigit1
+	cmp eax,1
+	je cmdStepParamsGood
+	print "Parameter entered is not a digit, please enter a digit: "
+	mov edx,offset firstParam
+	mov ecx,sizeof firstParam
+	call ReadString
+	jmp cmdStepLoop1
+cmdStepParamsGood:
+	println "Parameter is good"
 	ret
 cmdStep ENDP
 
@@ -481,13 +529,11 @@ cmdChange PROC
 	call getParams
 	cmp ecx,0
 	je firstParamError
-
 	;get the second parameter
 	mov edi, offset inBuffer
 	mov esi, offset secParam
 	mov edx, 2
 	call getParams
-
 	jmp cmdChangePrint
 firstParamError:
 	println "Error processing parameters, enter the first parameter"
@@ -509,6 +555,19 @@ cmdChangePrint:
 	mov edx, offset secParam
 	call WriteString
 	call Crlf
+	;check to see if the second parameter is a digit
+cmdChangeLoop1:
+	mov edi,offset secParam
+	call isDigit1
+	cmp eax,1
+	je cmdChangeParamsGood
+	print "Second parameter entered is not a digit, please enter a digit: "
+	mov edx,offset secParam
+	mov ecx,sizeof secParam
+	call ReadString
+	jmp cmdChangeLoop1
+cmdChangeParamsGood:
+	println "Parameters are good"
 	ret
 cmdChange ENDP
 
