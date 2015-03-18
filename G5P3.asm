@@ -138,6 +138,32 @@ ENDM
 ;
 
 ;
+;isDigit
+;checks the string that it is a digit
+;@set up
+;mov edi, offset string
+;@return eax=1 if string is a digit eax=0 if string is not a digit
+;
+isDigit PROC
+	mov eax,1		;will go to 0 if the character is not detected as a digit
+	dec edi			;set up so the auto increment doesn't increment to next
+goThroughString:
+	inc edi
+	mov bx,byte ptr [edi]
+	cmp bx,0
+	je isDigitDone
+	cmp bx,'0'			;compare to ascii 0
+	jl isNotADigit
+	cmp bx,'9'			;compare to ascii 9
+	jg isNotADigit
+	jmp goThroughString
+isNotADigit:
+	mov eax,0
+isDigitDone:
+	ret
+isDigit ENDP
+
+;
 ;skipWhiteSpace
 ;@edi the pointer to the string you need to skip over whitespace
 ;
@@ -154,64 +180,7 @@ skipWhite:
 skipWhiteSpace ENDP
 
 ;
-;nullParams
-;fills the parameter variables with 0s
-;
-nullParams PROC
-	mov eax,30
-	nullFill firstParam,eax
-	mov eax,30
-	nullFill secParam,eax
-	mov eax,30
-	nullFill thirdParam,eax
-	ret
-nullParams ENDP
-
-;
-;getSecondParam
-;retrieves the first parameter of the string stored in edi
-;stores the first parameter in the byte variable 'firstParam'
-;to set up:
-;mov edi, offset str
-;@return ebx=1 if success ebx=0 if failure
-;@return ecx=1 if not end of string ecx=0 if end of string
-;
-getSecondParam PROC
-	;position edi to the start of the parameter
-	mov ebx,1
-	mov ecx,1
-	dec edi			;decrement to account for first inc
-gspskipToFirst:		;set edi to the start of the first letter of the string
-	inc edi
-	movzx ax,byte ptr [edi]
-	cmp ax,' '
-	jne gspskipToFirst
-	cmp ax,0
-	je gspError
-	;can start copying the string
-	inc edi							;increment edi to the next character, it's a space right now
-	mov esi, offset secParam
-gspcopy:
-	movzx ax,byte ptr [edi]
-	mov [esi],ax
-	cmp ax,' '
-	je gspFin
-	cmp ax,0
-	je gspEndOfString
-	inc edi
-	inc esi
-	jmp gspcopy
-gspError:
-	mov ebx,0
-	jmp gspFin
-gspEndOfString:
-	mov ecx,0
-gspFin:
-	ret
-getSecondParam ENDP
-
-;
-;getFirstParam
+;getParams
 ;retrieves the first parameter of the string stored in edi
 ;stores the result in the variable pointed to by esi
 ;to set up:
@@ -221,7 +190,7 @@ getSecondParam ENDP
 ;@return ebx=1 if success ebx=0 if failure
 ;@return ecx=1 if not end of the string ecx=0 if end of string
 ;
-getFirstParam PROC
+getParams PROC
 	;position edi to the start of the parameter
 	mov ebx,1
 	mov ecx,1
@@ -259,45 +228,7 @@ gfpEndOfString:
 	mov ecx,0
 gfpFin:
 	ret
-getFirstParam ENDP
-
-;
-;getThirdParam
-;retrieves the third parameter of the string stored in edi
-;stores the first parameter in the byte variable 'thirdParam'
-;to set up:
-;mov edi, offset str
-;@return ebx=1 if success ebx=0 if failure
-;
-getThirdParam PROC
-	;position edi to the start of the parameter
-	mov ebx,1
-	dec edi			;decrement to account for first inc
-gtpskipToFirst:		;set edi to the start of the first letter of the string
-	inc edi
-	movzx ax,byte ptr [edi]
-	cmp ax,' '
-	jne gtpskipToFirst
-	cmp ax,0
-	je gtpError
-	;can start copying the string
-	inc edi							;increment edi to the next character, it's a space right now
-	mov esi, offset thirdParam
-gtpcopy:
-	movzx ax,byte ptr [edi]
-	mov [esi],ax
-	cmp ax,' '
-	je gtpFin
-	cmp ax,0
-	je gtpFin
-	inc edi
-	inc esi
-	jmp gtpcopy
-gtpError:
-	mov ebx,0
-gtpFin:
-	ret
-getThirdParam ENDP
+getParams ENDP
 
 ;
 ;cmpString procedure
@@ -318,7 +249,6 @@ Start:	nop
 	inc esi
 	inc edi
 	jmp Start
-	
 NotEqu: nop 			;not equal case 
 	mov eax,0
 	jmp cmpStringFin
@@ -326,7 +256,6 @@ Equal:	nop				;equal case
 	mov eax,1
 cmpStringFin:
 	ret
-	
 cmpString ENDP
 
 ;
@@ -377,54 +306,23 @@ dispHelp PROC
 dispHelp ENDP
 
 ;
-;getOneParam
-;retrieves one parameter and stores it in firstParam
-;
-getOneParam PROC
-	mov eax,30
-	nullFill firstParam,eax
-	mov edi, offset inBuffer
-	call skipWhiteSpace			;skip the initial whitespace
-	call getFirstParam
-	cmp ebx,0
-	je firstParamError
-	movzx eax,inBuffer[5]
-	cmp inBuffer[5],10			;check to see if there was a LF character after the command
-	je firstParamError
-	jmp firstParamNoError
-firstParamError:
-	println "Error processing parameters, enter the first parameter"
-	mov edx, offset firstParam
-	mov ecx, sizeof firstParam
-	call ReadString
-firstParamNoError:
-	ret
-getOneParam ENDP
-
-;
 ;cmdLoad
 ;needs 3 parameters <name> <priority> <run_time>
 ;
 cmdLoad PROC
-	.code
 	println "Load command entered"
-	;clear the parameter variables
-	call nullParams					;fill the parameters with 0s
-	;get and error check the parameter variables from the inBuffer
 	mov edi,offset inBuffer
-	call getFirstParam				;retrieve the first parameter
-	cmp firstParam,0
-	je firstParamError
-	cmp ecx,0
-	je secParamError
-	call getSecondParam				;retrieve the second parameter
-	cmp ebx,0
-	je secParamError
-	cmp ecx,0
-	je thirdParamError
-	call getThirdParam				;retrieve the third parameter
-	cmp ebx,0
-	je thirdParamError
+	mov esi,offset firstParam
+	mov edx,1
+	call getParams
+	mov edi,offset inBuffer
+	mov esi,offset secParam
+	mov edx,2
+	call getParams
+	mov edi,offset inBuffer
+	mov esi,offset thirdParam
+	mov edx,3
+	call getParams
 	jmp noParamError
 firstParamError:
 	println "Error processing parameters, enter first parameter"
@@ -454,22 +352,6 @@ noParamError:
 	;;;start processing load command
 	movzx edi,program					;move the program data location into edi
 	sub edi,indexsize
-
-	jmp skiptocycle
-	;find the next blank entry to input program data
-nextBlankEntry:
-	add edi,indexsize					;go to the next program data location
-	movzx eax,byte ptr [edi]
-	cmp eax,0
-	jne nextBlankEntry
-
-skiptocycle:
-	mov edi,0
-cycle:
-	movzx eax,firstParam[edi]
-	inc edi
-	cmp edi,10
-	jle cycle
 	ret
 cmdLoad ENDP
 
@@ -479,7 +361,13 @@ cmdLoad ENDP
 ;
 cmdHold PROC
 	println "Hold command entered"
-	call getOneParam
+	mov eax,30
+	nullFill firstParam,eax
+	;get the first parameter
+	mov edi,offset inBuffer
+	mov esi,offset firstParam
+	mov edx,1
+	call getParams
 	;start processing hold command
 	mov edx,offset firstParam
 	call WriteString
@@ -493,15 +381,13 @@ cmdHold ENDP
 ;
 cmdRun PROC
 	println "Run command entered"
-	;gotta repeat the getOneParam procedure because run is 3 letters long
 	mov eax,30
 	nullFill firstParam,eax
-	mov edi, offset inBuffer
-	call getFirstParam
-	cmp ebx,0
-	je firstParamError
-	cmp firstParam[4],0			;check to see if there was a null character at the end of the command
-	je firstParamError
+	;get the first parameter
+	mov edi,offset inBuffer
+	mov esi,offset firstParam
+	mov edx,1
+	call getParams
 	jmp firstParamNoError
 firstParamError:
 	println "Error processing parameters, enter the first parameter"
@@ -526,7 +412,10 @@ cmdKill PROC
 	mov eax,30
 	nullFill firstParam,eax
 	println "Kill command entered"
-	call getOneParam
+	mov edi, offset inBuffer
+	mov esi, offset firstParam
+	mov edx,1
+	call getParams
 	;display the parameters
 	mov edx,offset firstParam
 	call WriteString
@@ -562,7 +451,10 @@ cmdStep PROC
 	mov eax,30
 	nullFill firstParam,eax
 	println "Step command entered"
-	call getOneParam
+	mov edi, offset inBuffer
+	mov esi, offset firstParam
+	mov edx,1
+	call getParams
 	;display the parameter
 	mov edx,offset firstParam
 	call WriteString
@@ -576,32 +468,27 @@ cmdStep ENDP
 ;
 cmdChange PROC
 	println "Change command entered"
-	call nullParams
+	mov eax,30
+	nullFill firstParam,eax
+	mov eax,30
+	nullFill secParam,eax
+	mov eax,30
+	nullFill thirdParam,eax
 	;get the first parameter
 	mov edi, offset inBuffer
 	mov esi, offset firstParam
 	mov edx, 1
-	call getFirstParam
-	cmp ebx,0
+	call getParams
+	cmp ecx,0
 	je firstParamError
 
 	;get the second parameter
 	mov edi, offset inBuffer
 	mov esi, offset secParam
 	mov edx, 2
-	call getFirstParam
-	cmp ebx,0
-	je secondParamError
-	jmp cmdChangePrint
+	call getParams
 
-	cmp ebx,0
-	je firstParamError
-	cmp firstParam[6],0			;check to see if there was a null character after the command
-	je firstParamError
-	call getSecondParam
-	cmp ebx,0
-	je secondParamError
-	jmp firstParamNoError
+	jmp cmdChangePrint
 firstParamError:
 	println "Error processing parameters, enter the first parameter"
 	mov edx, offset firstParam
