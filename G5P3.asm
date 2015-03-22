@@ -22,7 +22,7 @@ ExitProcess PROTO, dwExistCode:DWORD
 	priority equ 11				;priority contains 1 byte	(byte 1)
 	hold equ 12					;hold contains 1 byte		(byte 2)
 	runtime equ 13				;runtime contains a word	(byte 3-4)
-	namesize equ 0				;namesize contains 10 bytes	(byte 5-15)
+	name equ 0					;namesize contains 10 bytes	(byte 5-15)
 	indexsize equ 15			;size of each data structure index
 	program byte 1400 dup(0)
 	index byte 1 dup(0)
@@ -67,10 +67,10 @@ println MACRO text
 	call WriteString
 ENDM
 ;
-;normStr
+;toLowerCase
 ;converts all characters in the string to lowercase
 ;
-normStr MACRO str
+toLowerCase MACRO str
 	push edi
 	;mov edi,edx
 	mov edi, offset str
@@ -134,8 +134,90 @@ loop1:
 ENDM
 
 ;
+;toPower
+;takes the first parameter and sets it to the power of the second parameter
+;@base the number to perform the power operation on
+;@exp the exponent
+;@return eax = the result
+;
+toPower MACRO base,exp
+toPowerLoop:
+	mul base,base
+	dec exp
+	cmp exp,0
+	je toPowerLoop
+	mov eax,base
+ENDM
+
+;
 ;PROCEDURES
 ;
+
+;
+;strToByte
+;converts a string stored in edi to a byte variable
+;@setup
+;mov edi,offset string
+;@return eax = the byte variable
+;
+strToByte PROC
+	mov ebx,0
+strToByteLoop:
+	movzx ax,byte ptr[edi]
+	and ax,20h
+	;toPower 10,ax
+	movzx ecx,ax
+	imul eax,ecx
+	add ebx,eax
+	cmp byte ptr[edi],0
+	jne strToByteLoop
+	ret
+strToByte ENDP
+
+; -----------------------------------------------
+; Convert to Decimal
+;@start up
+;mov edi offset str
+;@return number is in eax
+cvtdec PROC
+	pushad
+	;mov number,0
+	mov eax,0
+	mov ecx,0
+	mov edx,0
+	;mov edi, bufferIndex
+	mov ebx,10
+cvdL1:
+	;mov dl,buffer[edi]
+	mov dl,byte ptr [edi]
+	cmp edx,0
+	je cdvext
+	cmp edx,'0'
+	jl cdvext
+	cmp edx,'9'
+	jg cdvext
+	; remove the 30h from the register to get the real number
+	and edx,0FH
+	mov ecx,edx
+	imul ebx
+	add eax,ecx		;add result into eax
+	inc edi
+	jmp cvdL1
+cdvext:
+	;mov number,eax
+	;mov bufferIndex, edi
+	popad
+	ret
+cvtdec ENDP
+
+;
+;nextIndex
+;moves the index variable to the next program index
+;
+nextIndex PROC
+	add index,indexsize
+	ret
+nextIndex ENDP
 
 ;
 ;isDigit
@@ -298,6 +380,47 @@ switchCmdFin:
 switchCmd ENDP
 
 ;
+;cpyString
+;copies a string starting in edi to another variable in esi
+;@set up:
+;mov edi,offset source
+;mov esi,offset target
+;
+cpyString PROC
+	push eax
+cpyStringLoop:
+	movzx eax,byte ptr[edi]			;move the contents of the source into eax
+	mov [esi],eax					;copy the contents into the target
+	inc edi
+	inc esi
+	cmp eax,0						;check for the null character
+	jne cpyStringLoop				;jump back if the null character isn't encountered
+cpyStringDone:
+	pop eax
+	ret
+cpyString ENDP
+
+;
+;strLength1
+;takes a string value in edi and returns in eax the value of the length of the string
+;@setup:
+;mov edi,offset str
+;@return:
+;eax contains the length of the string, including the null character
+strLength1 PROC
+	push ebx
+	mov eax,0		;setup for counting
+strLengthLoop:
+	movzx ebx,byte ptr[edi]
+	inc edi					;increment the string pointer for the next index
+	inc eax					;increment the count
+	cmp ebx,0
+	jne strLengthLoop
+	pop ebx
+	ret
+strLength1 ENDP
+
+;
 ;exitProgram
 ;exits the program
 ;put into a function because of check equality macro
@@ -332,11 +455,15 @@ cmdLoad PROC
 	mov esi,offset firstParam
 	mov edx,1
 	call getParams
+	cmp ecx,0
+	je firstParamError
 	;get the second parameter
 	mov edi,offset inBuffer
 	mov esi,offset secParam
 	mov edx,2
 	call getParams
+	cmp ecx,0
+	je secParamError
 	;get the third parameter
 	mov edi,offset inBuffer
 	mov esi,offset thirdParam
@@ -359,12 +486,12 @@ thirdParamError:
 	mov ecx, sizeof thirdParam
 	call ReadString
 noParamError:
-	call dispParams
+	call dispParams			;display the parameters to check their values
 	;check to see if the second parameter entered is a digit
 Loop1:
 	mov edi,offset secParam
 	call isDigit1
-	cmp eax,1
+	cmp eax,1				;will contain a one if the string contains only digits
 	je Loop2
 	print "Second parameter entered does not have a digit value, please enter a digit value: "
 	mov edx,offset secParam
@@ -375,7 +502,7 @@ Loop1:
 Loop2:
 	mov edi,offset thirdParam
 	call isDigit1
-	cmp eax,1
+	cmp eax,1				;will contain a one if the string contains only digits
 	je parametersCorrect
 	print "Third parameter entered does not have a digit value, please enter a digit value: "
 	mov edx,offset thirdParam
@@ -384,8 +511,34 @@ Loop2:
 	jmp Loop2					;loop until a correct input is entered
 parametersCorrect:
 	;;;start processing load command
-	movzx edi,program					;move the program data location into edi
+	println "Parameters are correct"
+	mov index,0								;start at index 0 initially
+	movzx edi,index							;mov the index value into edi
 	sub edi,indexsize
+	;cycle through the program structure to find an empty location
+Loop3:
+	add edi,indexsize
+	cmp program[edi],0			;check to see if the pointer is equal to 0
+	je Loop3Done
+	jmp Loop3
+Loop3Done:
+	;copy the name
+	mov esi,offset program			;mov into esi the address of the source
+	add edi,offset firstParam		;move into edi the address of the target
+	call cpyString					;copy the string
+	mov edi,offset firstParam
+	call strLength1					;recorrect for the cpyString function, subtract the length of the string
+	sub esi,eax
+	;process the priority
+	mov edi,offset secParam			;move into edi the offset of the second parameter
+	call cvtdec						;convert the number to a decimal
+	;mov ax,eax
+	mov priority[esi],eax			;will be the length of the string away from the beginning of program, so will write to a weird place
+	;need to get the legnth of the added string and subtract the bitch, working on strLength procedure
+	;process the run time
+	mov edi, offset thirdParam
+	call cvtdec
+	mov runtime[esi],eax
 	ret
 cmdLoad ENDP
 
@@ -463,12 +616,33 @@ cmdKill ENDP
 ;
 cmdShow PROC
 	println "Show command entered"
-	mov index,0
-	;process name
-	;process priority
-	;process hold
-	;process run_time
-
+	mov index,0						;set the index to the start
+	mov edx,offset program			;set the initial start of the program
+	sub edx,indexsize
+Loop1:
+	add edx,indexsize
+	mov eax,edx						;copy a temporary variable from edx
+	;process and display name
+	print "Name: "
+	mov edx,offset program
+	call WriteString
+	;process and display priority
+	print "	Priority: "
+	mov edx,priority[edx]
+	call WriteDec
+	;process and display hold
+	mov edx,eax						;copy the temp variable
+	mov edx,priority[edx]
+	call WriteDec
+	print "	Hold status: "
+	mov edx,hold[edx]
+	call WriteDec
+	;process and display run_time
+	call Crlf						;next line
+	mov edx,eax						;copy the temp variable
+	print "		Run_time: "
+	mov edx,runtime[edx]
+	call Crlf				;next line
 	;jump back up to next program entry if not done
 	jmp cmdShowDone
 noEntries:
@@ -582,7 +756,7 @@ MainStart:
 	mov edx, OFFSET inBuffer		;set everything up for ReadString
 	mov ecx, sizeof inBuffer
 	call ReadString
-	normStr inBuffer				;normalize the inBuffer to all lowercase letters
+	toLowerCase inBuffer			;normalize the inBuffer to all lowercase letters
 	call switchCmd					;check for the input of a command
 	jmp MainStart					;infinite loop until user types 'quit'
 main ENDP
