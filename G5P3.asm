@@ -19,6 +19,7 @@ ExitProcess PROTO, dwExistCode:DWORD
 	thirdParam byte 30 dup(0)
 	byteTemp byte 1 dup(0)
 	wordTemp word 1 dup(0)
+	tempAddress dword 1 dup(0)	;temprory variable for holding the address of something
 	priority equ 11				;priority contains 1 byte	(byte 1)
 	hold equ 12					;hold contains 1 byte		(byte 2)
 	runtime equ 13				;runtime contains a word	(byte 3-4)
@@ -50,8 +51,10 @@ print MACRO text
 	.data
 	str byte text,0
 	.code
+	push edx
 	mov edx, offset str
 	call WriteString
+	pop edx
 ENDM
 ;
 ;println
@@ -63,8 +66,10 @@ println MACRO text
 	.data
 	str byte text,0Dh,0Ah,0
 	.code
+	push edx
 	mov edx, offset str
 	call WriteString
+	pop edx
 ENDM
 ;
 ;toLowerCase
@@ -342,10 +347,10 @@ push edi
 Start:	nop
 	mov al, byte ptr [esi]
 	mov ah, byte ptr [edi]
-	cmp ah, al			;compare chars
-	jne NotEqu			;quit early NOTE: will quit if one is NULL and other not
 	cmp ah, NULL		;end of string and equal
-	je Equal		
+	je Equal	
+	cmp ah, al			;compare chars
+	jne NotEqu			;quit early NOTE: will quit if one is NULL and other not	
 	inc esi
 	inc edi
 	jmp Start
@@ -527,12 +532,13 @@ Loop3:
 	jmp Loop3
 Loop3Done:
 	;copy the name
+	mov tempAddress,edi				;move the empty address into the temporary address
 	mov esi,offset program			;mov into esi the address of the source
 	add edi,offset firstParam		;move into edi the address of the target
 	call cpyString					;copy the string
 	mov edi,offset firstParam
 	call strLength1					;recorrect for the cpyString function, subtract the length of the string
-	sub esi,eax
+	sub edi,eax
 	;process the priority
 	mov edi,offset secParam			;move into edi the offset of the second parameter
 	call cvtdec						;convert the number to a decimal
@@ -621,31 +627,30 @@ cmdKill ENDP
 cmdShow PROC
 	println "Show command entered"
 	mov index,0						;set the index to the start
-	mov edx,offset program			;set the initial start of the program
-	sub edx,indexsize
+	mov edi,offset program			;set the initial start of the program
+	sub edi,indexsize
 Loop1:
-	add edx,indexsize
-	mov eax,edx						;copy a temporary variable from edx
+	add edi,indexsize
+	mov eax,[edi]						;copy a temporary variable from edx
 	;process and display name
 	print "Name: "
-	mov edx,offset program
+	mov edx,edi							;mov edx,offset program
 	call WriteString
 	;process and display priority
 	print "	Priority: "
-	mov edx,priority[edx]
+	mov edx,priority[edi]
 	call WriteDec
 	;process and display hold
-	mov edx,eax						;copy the temp variable
-	mov edx,priority[edx]
+	mov edx,priority[edi]
 	call WriteDec
 	print "	Hold status: "
-	mov edx,hold[edx]
+	mov edx,hold[edi]
 	call WriteDec
 	;process and display run_time
 	call Crlf						;next line
 	mov edx,eax						;copy the temp variable
 	print "		Run_time: "
-	mov edx,runtime[edx]
+	mov edx,runtime[edi]
 	call Crlf				;next line
 	;jump back up to next program entry if not done
 	jmp cmdShowDone
