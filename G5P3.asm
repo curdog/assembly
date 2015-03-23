@@ -337,22 +337,26 @@ getParams ENDP
 ;esi - offset str1
 ;edi - offset str2
 cmpString PROC
+push esi
+push edi
 Start:	nop
 	mov al, byte ptr [esi]
 	mov ah, byte ptr [edi]
-	cmp ah, NULL		;end of string and equal
-	je Equal
 	cmp ah, al			;compare chars
-	jne NotEqu			;quit early NOTE: will quit if one is NULL and other not		
+	jne NotEqu			;quit early NOTE: will quit if one is NULL and other not
+	cmp ah, NULL		;end of string and equal
+	je Equal		
 	inc esi
 	inc edi
 	jmp Start
 NotEqu: nop 			;not equal case 
 	mov eax,0
 	jmp cmpStringFin
-Equal:	nop				;equal case
+Equal:	nop		  ;equal case
 	mov eax,1
 cmpStringFin:
+	pop edi
+	pop esi	
 	ret
 cmpString ENDP
 
