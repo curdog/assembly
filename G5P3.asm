@@ -12,6 +12,9 @@ ExitProcess PROTO, dwExistCode:DWORD
 .data
 	CR equ 0Dh
 	LF equ 0Ah
+	stateKill equ 1
+	stateHold equ 2
+	stateRun equ 3
 	flag byte 1 dup(0)
 	inBuffer byte 30 dup(0)
 	firstParam byte 30 dup(0)
@@ -216,15 +219,6 @@ cdvext:
 cvtdec ENDP
 
 ;
-;nextIndex
-;moves the index variable to the next program index
-;
-nextIndex PROC
-	add index,indexsize
-	ret
-nextIndex ENDP
-
-;
 ;isDigit
 ;checks the string stored in edi to see if it has a digit value
 ;@set up:
@@ -342,8 +336,8 @@ getParams ENDP
 ;esi - offset str1
 ;edi - offset str2
 cmpString PROC
-push esi
-push edi
+	push esi
+	push edi
 Start:	nop
 	mov al, byte ptr [esi]
 	mov ah, byte ptr [edi]
@@ -495,7 +489,6 @@ thirdParamError:
 	mov ecx, sizeof thirdParam
 	call ReadString
 noParamError:
-	call dispParams			;display the parameters to check their values
 	;check to see if the second parameter entered is a digit
 Loop1:
 	mov edi,offset secParam
@@ -520,35 +513,72 @@ Loop2:
 	jmp Loop2					;loop until a correct input is entered
 parametersCorrect:
 	;;;start processing load command
-	println "Parameters are correct"
-	mov index,0								;start at index 0 initially
-	movzx edi,index							;mov the index value into edi
-	sub edi,indexsize
+	;display all the parameters and what they have done. 
+	println "New job entered"
+	print "Name: "
+	mov edx,offset firstParam
+	call WriteString
+	print "		Priority: "
+	mov edx,offset secParam
+	call WriteString
+	print "		Run Time: "
+	mov edx,offset thirdParam
+	call WriteString
+	call Crlf
+	mov edi,offset program			;move program address into edi
+	sub edi,indexsize				;initialize the pointer
 	;cycle through the program structure to find an empty location
 Loop3:
 	add edi,indexsize
-	cmp program[edi],0			;check to see if the pointer is equal to 0
+	cmp byte ptr[edi],0			;check to see if the pointer is equal to 0
 	je Loop3Done
 	jmp Loop3
 Loop3Done:
 	;copy the name
 	mov tempAddress,edi				;move the empty address into the temporary address
-	mov esi,offset program			;mov into esi the address of the source
-	add edi,offset firstParam		;move into edi the address of the target
+	mov esi,edi						;mov into esi the address of the source
+	mov edi,offset firstParam		;move into edi the address of the target
 	call cpyString					;copy the string
-	mov edi,offset firstParam
-	call strLength1					;recorrect for the cpyString function, subtract the length of the string
-	sub edi,eax
 	;process the priority
 	mov edi,offset secParam			;move into edi the offset of the second parameter
-	call cvtdec						;convert the number to a decimal
-	;mov ax,eax
-	mov priority[esi],eax			;will be the length of the string away from the beginning of program, so will write to a weird place
-	;need to get the legnth of the added string and subtract the bitch, working on strLength procedure
+	call strLength					;length of the string in eax
+	mov ecx,eax
+	mov edx,offset secParam
+	call ParseInteger32				;32 bit integer in eax
+	;check to see if the data entered is valid
+cmdLoadPriorityCheck:
+	cmp eax,10
+	jl priorityCont
+	print "You entered too large of a number, please enter a number less than 10: "
+	call ReadDec		;read a decimal, it's contents is stored back in eax
+	jmp cmdLoadPriorityCheck
+priorityCont:
+	mov edi,tempAddress
+	add edi,priority
+	mov [edi],eax		;move the result into priority
 	;process the run time
-	mov edi, offset thirdParam
-	call cvtdec
-	mov runtime[esi],eax
+	mov edi,offset thirdParam
+	call strLength
+	mov ecx,eax
+	mov edx,offset thirdParam
+	call ParseInteger32			;32 bit integer in eax
+runTimeCheck:
+	cmp eax,10000				;Any value over 10k is not accepted
+	jle runTimeCheckDone
+	print "You entered too large of a number, please enter a number less then 10000: "
+	call ReadDec
+	jmp runTimeCheck
+runTimeCheckDone:
+	mov edi,tempAddress
+	add edi,runtime
+	mov [edi],eax
+	mov eax,0
+	movzx eax,byte ptr[esi]
+	;change the hold parameter
+	mov edi,tempAddress
+	add edi,hold
+	mov ax,stateHold
+	mov [edi],ax
 	ret
 cmdLoad ENDP
 
@@ -626,34 +656,40 @@ cmdKill ENDP
 ;
 cmdShow PROC
 	println "Show command entered"
-	mov index,0						;set the index to the start
 	mov edi,offset program			;set the initial start of the program
+	cmp byte ptr[edi],0
+	je noEntries
 	sub edi,indexsize
 Loop1:
 	add edi,indexsize
-	mov eax,[edi]						;copy a temporary variable from edx
+	cmp byte ptr[edi],0					;check if there were no job entries
+	je cmdShowDone
 	;process and display name
 	print "Name: "
 	mov edx,edi							;mov edx,offset program
 	call WriteString
 	;process and display priority
 	print "	Priority: "
-	mov edx,priority[edi]
-	call WriteDec
+	mov edx,edi
+	add edx,priority					;add offset for priority
+	movzx eax,byte ptr[edx]
+	call WriteDec						;print priority
 	;process and display hold
-	mov edx,priority[edi]
-	call WriteDec
 	print "	Hold status: "
-	mov edx,hold[edi]
-	call WriteDec
+	mov edx,edi
+	add edx,hold						;add offset for hold
+	movzx eax,byte ptr[edx]
+	call WriteDec						;print hold status
 	;process and display run_time
 	call Crlf						;next line
-	mov edx,eax						;copy the temp variable
 	print "		Run_time: "
-	mov edx,runtime[edi]
+	mov edx,edi
+	add edx,runtime			;add offset for the run time
+	movzx eax,word ptr[edx]
+	call WriteDec		
 	call Crlf				;next line
 	;jump back up to next program entry if not done
-	jmp cmdShowDone
+	jmp Loop1
 noEntries:
 	println "There are no entries for jobs"
 cmdShowDone:
@@ -758,7 +794,7 @@ cmdChange ENDP
 ;main procedure
 ;
 main PROC
-	println "Welcome to the diddly doodley OS simulator"
+	println "Welcome to Goat OS"
 	println "Type help to display a list of commands and what they do"
 MainStart:
 	print ":"						;prompt the user for entry
