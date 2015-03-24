@@ -852,6 +852,10 @@ cmdChangeParamsGood:
 	
 	
 	mov edi, offset secParam
+=======
+	mov edx, offset secParam
+	mov edi, edx
+>>>>>>> origin/master
 	call strLength
 	mov edx, offset secParam
 	mov ecx, eax
