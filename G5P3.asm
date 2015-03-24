@@ -15,9 +15,9 @@ ExitProcess PROTO, dwExistCode:DWORD
 	stateKill equ 1
 	stateHold equ 2
 	stateRun equ 3
+	BUFFERSIZE equ 80
 	flag byte 1 dup(0)
-	inBuffSize equ 80
-	inBuffer byte inBuffSize dup(0)
+	inBuffer byte BUFFERSIZE dup(0)
 	firstParam byte 30 dup(0)
 	secParam byte 30 dup(0)
 	thirdParam byte 30 dup(0)
@@ -425,6 +425,18 @@ strLengthLoop:
 strLength1 ENDP
 
 ;
+;findJobName
+;finds a job name and returns in edi the address of the start of the job
+;@setup
+;mov edi,offset jobname
+;@return
+;edx = address of job, 0 if no job is found
+;
+findJobName PROC
+	ret
+findJobName ENDP
+
+;
 ;exitProgram
 ;exits the program
 ;put into a function because of check equality macro
@@ -557,6 +569,11 @@ priorityCont:
 	mov edi,tempAddress
 	add edi,priority
 	mov [edi],eax		;move the result into priority
+	;change the hold parameter
+	mov edi,tempAddress
+	add edi,hold
+	mov ax,stateHold
+	mov [edi],ax
 	;process the run time
 	mov edi,offset thirdParam
 	call strLength
@@ -574,12 +591,7 @@ runTimeCheckDone:
 	add edi,runtime
 	mov [edi],eax
 	mov eax,0
-	movzx eax,byte ptr[esi]
-	;change the hold parameter
-	mov edi,tempAddress
-	add edi,hold
-	mov ax,stateHold
-	mov [edi],ax
+	movzx eax,word ptr[edi]
 	ret
 cmdLoad ENDP
 
@@ -589,7 +601,7 @@ cmdLoad ENDP
 ;
 cmdHold PROC
 	println "Hold command entered"
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
 	;get the first parameter
 	mov edi,offset inBuffer
@@ -609,7 +621,7 @@ cmdHold ENDP
 ;
 cmdRun PROC
 	println "Run command entered"
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
 	;get the first parameter
 	mov edi,offset inBuffer
@@ -637,7 +649,7 @@ cmdRun ENDP
 ;needs 1 parameter <name>
 ;
 cmdKill PROC
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
 	println "Kill command entered"
 	mov edi, offset inBuffer
@@ -702,7 +714,7 @@ cmdShow ENDP
 ;needs 1 parameter <n>
 ;
 cmdStep PROC
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
 	println "Step command entered"
 	;gete the first parameter
@@ -736,11 +748,11 @@ cmdStep ENDP
 ;
 cmdChange PROC
 	println "Change command entered"
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill secParam,eax
-	mov eax,30
+	mov eax,BUFFERSIZE
 	nullFill thirdParam,eax
 	;get the first parameter
 	mov edi, offset inBuffer
@@ -791,16 +803,6 @@ cmdChangeParamsGood:
 	ret
 cmdChange ENDP
 
-clearBuffer PROC
-	push eax
-L:	mov eax, 0
-	mov inBuffer[eax], 0
-	cmp eax, inBuffSize
-	inc eax
-	jl L
-	pop eax
-clearBuffer ENDP 
-
 ;
 ;main procedure
 ;
@@ -814,7 +816,8 @@ MainStart:
 	call ReadString
 	toLowerCase inBuffer			;normalize the inBuffer to all lowercase letters
 	call switchCmd					;check for the input of a command
-	call clearBuffer
+	mov eax,BUFFERSIZE
+	nullFill inBuffer,eax
 	jmp MainStart					;infinite loop until user types 'quit'
 main ENDP
 
