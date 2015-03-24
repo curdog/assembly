@@ -431,16 +431,17 @@ strLength1 ENDP
 ;@setup
 ;mov edi,offset jobname
 ;@return
-;edi = address of job, 0 if no job is found
+;esi = address of job
+;edi = 0 if job is not found
 ;
 findJob PROC
 	push eax
-	push esi
 	mov esi,offset program		;move the offset of the program
 	sub esi,indexsize
 findJobLoop:
 	add esi,indexsize
-	cmp byte ptr[esi],0
+	mov al,byte ptr[esi]
+	cmp al,0					;compare to null
 	je findJob404				;if pointer reaches an uninitalized data then the job doesn't exist
 	call cmpString
 	cmp eax,1
@@ -449,7 +450,6 @@ findJobLoop:
 findJob404:
 	mov edi,0					;0 if the job doesn't exist
 findJobDone:
-	pop esi
 	pop eax
 	ret
 findJob ENDP
@@ -636,16 +636,17 @@ cmdHold PROC
 	cmp edi,0
 	je cmdHoldNoJob
 	print "Found job: "			;job was found so print that bitch out
-	mov edx,edi					;edi contains the address of the job now
+	mov eax,offset program
+	mov edx,esi					;edi contains the address of the job now
 	call WriteString
 	call Crlf
 	jmp cmdHoldCont
 cmdHoldNoJob:
-	println "Not job is found to match"
+	println "Job does not exist"
 	jmp cmdHoldDone
 cmdHoldCont:
-	add edi,hold						;edi contains the offset of the found job
-	mov byte ptr[edi],stateHold			;rewrite the hold state over to the edi
+	add esi,hold						;edi contains the offset of the found job
+	mov byte ptr[esi],stateHold			;rewrite the hold state over to the edi
 cmdHoldDone:
 	ret
 cmdHold ENDP
@@ -684,7 +685,7 @@ firstParamNoError:
 	cmp edi,0
 	je cmdRunNoJob
 	print "Found job: "			;job was found so print that bitch out
-	mov edx,edi					;edi contains the address of the job now
+	mov edx,esi					;esi contains the address of the job now
 	call WriteString
 	call Crlf
 	jmp cmdRunCont
@@ -692,10 +693,8 @@ cmdRunNoJob:
 	println "Not job is found to match"
 	jmp cmdRunDone
 cmdRunCont:
-	add edi,hold						;edi contains the offset of the found job
-	mov ax,stateRun
-	sub edi,3							;reset ax to correct address
-	mov [edi],ax						;rewrite the hold state over to the edi
+	add esi,hold						;edi contains the offset of the found job
+	mov byte ptr[esi],stateRun					;rewrite the hold state over to the edi
 cmdRunDone:
 	ret
 cmdRun ENDP
@@ -716,6 +715,24 @@ cmdKill PROC
 	mov edx,offset firstParam
 	call WriteString
 	call Crlf
+	;Look for the job
+	mov edi,offset firstParam
+	call findJob
+	cmp edi,0
+	je cmdKillNoJob
+	print "Found job: "			;job was found so print that bitch out
+	mov eax,offset program
+	mov edx,esi					;edi contains the address of the job now
+	call WriteString
+	call Crlf
+	jmp cmdKillCont
+cmdKillNoJob:
+	println "Job does not exist"
+	jmp cmdKillDone
+cmdKillCont:
+	add esi,hold						;edi contains the offset of the found job
+	mov byte ptr[esi],stateKill			;rewrite the hold state over to the edi
+cmdKillDone:
 	ret
 cmdKill ENDP
 
