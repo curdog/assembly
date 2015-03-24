@@ -794,6 +794,8 @@ cmdStep ENDP
 ;needs 2 parameters <name> <priority>
 ;
 cmdChange PROC
+	pushad
+
 	println "Change command entered"
 	mov eax,BUFFERSIZE
 	nullFill firstParam,eax
@@ -847,9 +849,11 @@ cmdChangeLoop1:
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
 	println "Parameters are good"
-		mov edx, offset secParam
-	mov edi, edx
+	
+	
+	mov edi, offset secParam
 	call strLength
+	mov edx, offset secParam
 	mov ecx, eax
 	call parseDecimal32
 	
@@ -857,14 +861,16 @@ cmdChangeParamsGood:
 	call findJob
 	cmp edi,0
 	je noJobFound
-	mov byte ptr priority[edi], al
+	add edi,priority
+	mov [edi], al
+	popad
 	ret
 noJobFound:
 	println "No job found called:"
 	mov edx, offset firstParam
 	call WriteString
 	println " "
-	
+	popad
 	ret
 cmdChange ENDP
 
