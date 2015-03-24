@@ -831,10 +831,21 @@ cmdChangeLoop1:
 	print "Second parameter entered is not a digit, please enter a digit: "
 	mov edx,offset secParam
 	mov ecx,sizeof secParam
+	;move to eax
 	call ReadString
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
 	println "Parameters are good"
+	mov edi, offset firstParam
+	call findJob
+	cmp edi,0
+	je noJobFound
+	mov byte ptr edi, eax
+noJobFound:
+	println "No job found called:"
+	mov edx, offset firstParam
+	call WriteString
+	println ""
 	ret
 cmdChange ENDP
 
