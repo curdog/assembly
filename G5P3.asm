@@ -653,6 +653,7 @@ cmdHold ENDP
 ;
 ;cmdRun
 ;needs 1 parameter <name>
+;changes the state of the job to run
 ;
 cmdRun PROC
 	println "Run command entered"
@@ -676,6 +677,26 @@ firstParamNoError:
 	call WriteString
 	call Crlf
 	;start processing data for run command
+	;Look for the job
+	mov edi,offset firstParam
+	mov esi,offset program			;test
+	call findJob
+	cmp edi,0
+	je cmdRunNoJob
+	print "Found job: "			;job was found so print that bitch out
+	mov edx,edi					;edi contains the address of the job now
+	call WriteString
+	call Crlf
+	jmp cmdRunCont
+cmdRunNoJob:
+	println "Not job is found to match"
+	jmp cmdRunDone
+cmdRunCont:
+	add edi,hold						;edi contains the offset of the found job
+	mov ax,stateRun
+	sub edi,3							;reset ax to correct address
+	mov [edi],ax						;rewrite the hold state over to the edi
+cmdRunDone:
 	ret
 cmdRun ENDP
 
@@ -847,7 +868,7 @@ cmdChangeLoop1:
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
 	println "Parameters are good"
-		mov edx, offset secParam
+	mov edx, offset secParam
 	mov edi, edx
 	call strLength
 	mov ecx, eax
