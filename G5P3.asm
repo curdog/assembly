@@ -334,8 +334,9 @@ getParams ENDP
 ;compares two strings for equality
 ;@return eax=1 if equal, eax=0 if not equal
 ;strings must be null terminated
-;esi - offset str1
-;edi - offset str2
+;@setup
+;mov esi, offset str1
+;mov edi, offset str2
 cmpString PROC
 	push esi
 	push edi
@@ -425,16 +426,33 @@ strLengthLoop:
 strLength1 ENDP
 
 ;
-;findJobName
+;findJob
 ;finds a job name and returns in edi the address of the start of the job
 ;@setup
 ;mov edi,offset jobname
 ;@return
-;edx = address of job, 0 if no job is found
+;edi = address of job, 0 if no job is found
 ;
-findJobName PROC
+findJob PROC
+	push eax
+	push esi
+	mov esi,offset program		;move the offset of the program
+	sub esi,indexsize
+findJobLoop:
+	add esi,indexsize
+	cmp byte ptr[esi],0
+	je findJob404				;if pointer reaches an uninitalized data then the job doesn't exist
+	call cmpString
+	cmp eax,1
+	je findJobDone
+	jmp findJobLoop
+findJob404:
+	mov edi,0					;0 if the job doesn't exist
+findJobDone:
+	pop esi
+	pop eax
 	ret
-findJobName ENDP
+findJob ENDP
 
 ;
 ;exitProgram
@@ -612,6 +630,19 @@ cmdHold PROC
 	mov edx,offset firstParam
 	call WriteString
 	call Crlf
+	;Look for the job
+	print "Finding job: "
+	mov edi,offset firstParam
+	call findJob
+	cmp edi,0
+	je cmdHoldNoJob
+	mov edx,edi
+	call WriteString
+	call Crlf
+	jmp cmdHoldCont
+cmdHoldNoJob:
+	println "Not job is found to match"
+cmdHoldCont:
 	ret
 cmdHold ENDP
 
