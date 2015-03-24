@@ -17,7 +17,7 @@ ExitProcess PROTO, dwExistCode:DWORD
 	stateRun equ 3
 	BUFFERSIZE equ 80
 	flag byte 1 dup(0)
-	inBuffer byte BUFFERSIZE dup(0)
+	inBuffer byte 80 dup(0)
 	firstParam byte 30 dup(0)
 	secParam byte 30 dup(0)
 	thirdParam byte 30 dup(0)
@@ -123,101 +123,10 @@ cmpStrFunc MACRO str1,str2,func
 notEqual:
 	nop
 ENDM
-;
-;nullFill
-;fills an array with 0s
-;@arr the array to fill
-;@size the size of the array
-;
-nullFill MACRO arr,sizeOfData
-	LOCAL loop1
-	push edi
-	mov edi,0
-loop1:
-	mov arr[edi],0
-	inc edi
-	dec sizeOfData
-	cmp sizeOfData,0
-	jne loop1
-	pop edi
-ENDM
-
-;
-;toPower
-;takes the first parameter and sets it to the power of the second parameter
-;@base the number to perform the power operation on
-;@exp the exponent
-;@return eax = the result
-;
-toPower MACRO base,exp
-toPowerLoop:
-	mul base,base
-	dec exp
-	cmp exp,0
-	je toPowerLoop
-	mov eax,base
-ENDM
 
 ;
 ;PROCEDURES
 ;
-
-;
-;strToByte
-;converts a string stored in edi to a byte variable
-;@setup
-;mov edi,offset string
-;@return eax = the byte variable
-;
-strToByte PROC
-	mov ebx,0
-strToByteLoop:
-	movzx ax,byte ptr[edi]
-	and ax,20h
-	;toPower 10,ax
-	movzx ecx,ax
-	imul eax,ecx
-	add ebx,eax
-	cmp byte ptr[edi],0
-	jne strToByteLoop
-	ret
-strToByte ENDP
-
-; -----------------------------------------------
-; Convert to Decimal
-;@start up
-;mov edi offset str
-;@return number is in eax
-cvtdec PROC
-	pushad
-	;mov number,0
-	mov eax,0
-	mov ecx,0
-	mov edx,0
-	;mov edi, bufferIndex
-	mov ebx,10
-cvdL1:
-	;mov dl,buffer[edi]
-	mov dl,byte ptr [edi]
-	cmp edx,0
-	je cdvext
-	cmp edx,'0'
-	jl cdvext
-	cmp edx,'9'
-	jg cdvext
-	; remove the 30h from the register to get the real number
-	and edx,0FH
-	mov ecx,edx
-	imul ebx
-	add eax,ecx		;add result into eax
-	inc edi
-	jmp cvdL1
-cdvext:
-	;mov number,eax
-	;mov bufferIndex, edi
-	popad
-	ret
-cvtdec ENDP
 
 ;
 ;isDigit
@@ -440,12 +349,12 @@ findJob PROC
 	sub esi,indexsize
 findJobLoop:
 	add esi,indexsize
-	mov al,byte ptr[esi]
-	cmp al,0					;compare to null
 	je findJob404				;if pointer reaches an uninitalized data then the job doesn't exist
 	call cmpString
 	cmp eax,1
 	je findJobDone
+	mov al,byte ptr[esi]
+	cmp al,0					;compare to null
 	jmp findJobLoop
 findJob404:
 	mov edi,0					;0 if the job doesn't exist
@@ -453,6 +362,48 @@ findJobDone:
 	pop eax
 	ret
 findJob ENDP
+
+;
+;fillArray
+;@setup
+;mov edi,offset array
+;mov ecx,sizeof array
+;mov al,(desired content to fill)
+;
+fillArray PROC
+	dec edi
+fillArrayLoop:
+	inc edi
+	mov byte ptr[edi],al
+	dec ecx
+	cmp ecx,0
+	jg fillArrayLoop
+	ret
+fillArray ENDP
+
+;
+;nullParams
+;fills all the parameter variables with null values
+;
+nullParams PROC
+	push edi
+	push edx
+	mov edi,offset firstParam
+	mov edx,BUFFERSIZE
+	mov al,0
+	call fillArray
+	mov edi,offset secParam
+	mov edx,BUFFERSIZE
+	mov al,0
+	call fillArray
+	mov edi,offset thirdParam
+	mov edx,BUFFERSIZE
+	mov al,0
+	call fillArray
+	pop edx
+	pop edi
+	ret
+nullParams ENDP
 
 ;
 ;exitProgram
@@ -484,6 +435,7 @@ dispHelp ENDP
 ;
 cmdLoad PROC
 	println "Load command entered"
+	call nullParams
 	;get the first parameter
 	mov edi,offset inBuffer
 	mov esi,offset firstParam
@@ -579,8 +531,8 @@ Loop3Done:
 	;check to see if the data entered is valid
 cmdLoadPriorityCheck:
 	cmp eax,10
-	jl priorityCont
-	print "You entered too large of a number, please enter a number less than 10: "
+	jle priorityCont
+	print "Priority entered is not 10 or below: "
 	call ReadDec		;read a decimal, it's contents is stored back in eax
 	jmp cmdLoadPriorityCheck
 priorityCont:
@@ -608,8 +560,6 @@ runTimeCheckDone:
 	mov edi,tempAddress
 	add edi,runtime
 	mov [edi],eax
-	mov eax,0
-	movzx eax,word ptr[edi]
 	ret
 cmdLoad ENDP
 
@@ -619,8 +569,7 @@ cmdLoad ENDP
 ;
 cmdHold PROC
 	println "Hold command entered"
-	mov eax,BUFFERSIZE
-	nullFill firstParam,eax
+	call nullParams
 	;get the first parameter
 	mov edi,offset inBuffer
 	mov esi,offset firstParam
@@ -658,8 +607,7 @@ cmdHold ENDP
 ;
 cmdRun PROC
 	println "Run command entered"
-	mov eax,BUFFERSIZE
-	nullFill firstParam,eax
+	call nullParams
 	;get the first parameter
 	mov edi,offset inBuffer
 	mov esi,offset firstParam
@@ -704,8 +652,7 @@ cmdRun ENDP
 ;needs 1 parameter <name>
 ;
 cmdKill PROC
-	mov eax,BUFFERSIZE
-	nullFill firstParam,eax
+	call nullParams
 	println "Kill command entered"
 	mov edi, offset inBuffer
 	mov esi, offset firstParam
@@ -799,8 +746,7 @@ cmdShow ENDP
 ;needs 1 parameter <n>
 ;
 cmdStep PROC
-	mov eax,BUFFERSIZE
-	nullFill firstParam,eax
+	call nullParams
 	println "Step command entered"
 	;gete the first parameter
 	mov edi, offset inBuffer
@@ -832,15 +778,8 @@ cmdStep ENDP
 ;needs 2 parameters <name> <priority>
 ;
 cmdChange PROC
-	pushad
-
 	println "Change command entered"
-	mov eax,BUFFERSIZE
-	nullFill firstParam,eax
-	mov eax,BUFFERSIZE
-	nullFill secParam,eax
-	mov eax,BUFFERSIZE
-	nullFill thirdParam,eax
+	call nullParams
 	;get the first parameter
 	mov edi, offset inBuffer
 	mov esi, offset firstParam
@@ -853,7 +792,7 @@ cmdChange PROC
 	mov esi, offset secParam
 	mov edx, 2
 	call getParams
-	jmp cmdChangePrint
+	jmp cmdChangeLoop1
 firstParamError:
 	println "Error processing parameters, enter the first parameter"
 	mov edx, offset firstParam
@@ -864,16 +803,6 @@ secondParamError:
 	mov edx, offset secParam
 	mov ecx, sizeof secParam
 	call ReadString
-firstParamNoError:
-	println "No errors in processing parameters"
-	;display the parameters
-cmdChangePrint:
-	mov edx, offset firstParam
-	call WriteString
-	call Crlf
-	mov edx, offset secParam
-	call WriteString
-	call Crlf
 	;check to see if the second parameter is a digit
 cmdChangeLoop1:
 	mov edi,offset secParam
@@ -886,29 +815,30 @@ cmdChangeLoop1:
 	call ReadString
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
-	println "Parameters are good"
-	
 	mov edi, offset secParam
-
-	call strLength
+	call strLength1
 	mov edx, offset secParam
 	mov ecx, eax
 	call parseDecimal32
-	
+	cmp eax,10						;check for a valid priority entry
+	jle cmdChangeCont
+	print "Priority value entered is not 10 or below: "
+	call ReadInt
+	jmp cmdChangeParamsGood
+cmdChangeCont:
+	println "Parameters are good"
 	mov edi, offset firstParam
 	call findJob
 	cmp edi,0
 	je noJobFound
-	add edi,priority
-	mov [edi], al
-	popad
+	add esi,priority
+	mov byte ptr [esi], al
 	ret
 noJobFound:
 	println "No job found called:"
 	mov edx, offset firstParam
 	call WriteString
-	println " "
-	popad
+	call Crlf
 	ret
 cmdChange ENDP
 
@@ -925,8 +855,10 @@ MainStart:
 	call ReadString
 	toLowerCase inBuffer			;normalize the inBuffer to all lowercase letters
 	call switchCmd					;check for the input of a command
-	mov eax,BUFFERSIZE
-	nullFill inBuffer,eax
+	mov edi,offset inBuffer
+	mov edx,BUFFERSIZE
+	mov al,0
+	call fillArray
 	jmp MainStart					;infinite loop until user types 'quit'
 main ENDP
 
