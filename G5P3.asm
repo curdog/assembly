@@ -813,6 +813,7 @@ MainStart:
 	call ReadString
 	toLowerCase inBuffer			;normalize the inBuffer to all lowercase letters
 	call switchCmd					;check for the input of a command
+	call clearBuffer
 	jmp MainStart					;infinite loop until user types 'quit'
 main ENDP
 
