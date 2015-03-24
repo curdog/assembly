@@ -847,6 +847,24 @@ cmdChangeLoop1:
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
 	println "Parameters are good"
+		mov edx, offset secParam
+	mov edi, edx
+	call strLength
+	mov ecx, eax
+	call parseDecimal32
+	
+	mov edi, offset firstParam
+	call findJob
+	cmp edi,0
+	je noJobFound
+	mov byte ptr priority[edi], al
+	ret
+noJobFound:
+	println "No job found called:"
+	mov edx, offset firstParam
+	call WriteString
+	println " "
+	
 	ret
 cmdChange ENDP
 
