@@ -631,18 +631,22 @@ cmdHold PROC
 	call WriteString
 	call Crlf
 	;Look for the job
-	print "Finding job: "
 	mov edi,offset firstParam
 	call findJob
 	cmp edi,0
 	je cmdHoldNoJob
-	mov edx,edi
+	print "Found job: "			;job was found so print that bitch out
+	mov edx,edi					;edi contains the address of the job now
 	call WriteString
 	call Crlf
 	jmp cmdHoldCont
 cmdHoldNoJob:
 	println "Not job is found to match"
+	jmp cmdHoldDone
 cmdHoldCont:
+	add edi,hold						;edi contains the offset of the found job
+	mov byte ptr[edi],stateHold			;rewrite the hold state over to the edi
+cmdHoldDone:
 	ret
 cmdHold ENDP
 
