@@ -796,6 +796,7 @@ clearBuffer PROC
 L:	mov eax, 0
 	mov inBuffer[eax], 0
 	cmp eax, inBuffSize
+	inc eax
 	jl L
 	pop eax
 clearBuffer ENDP 
