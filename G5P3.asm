@@ -16,7 +16,8 @@ ExitProcess PROTO, dwExistCode:DWORD
 	stateHold equ 2
 	stateRun equ 3
 	flag byte 1 dup(0)
-	inBuffer byte 30 dup(0)
+	inBuffSize equ 80
+	inBuffer byte inBuffSize dup(0)
 	firstParam byte 30 dup(0)
 	secParam byte 30 dup(0)
 	thirdParam byte 30 dup(0)
@@ -789,6 +790,15 @@ cmdChangeParamsGood:
 	println "Parameters are good"
 	ret
 cmdChange ENDP
+
+clearBuffer PROC
+	push eax
+L:	mov eax, 0
+	mov inBuffer[eax], 0
+	cmp eax, inBuffSize
+	jl L
+	pop eax
+clearBuffer ENDP 
 
 ;
 ;main procedure
