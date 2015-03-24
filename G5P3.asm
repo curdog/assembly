@@ -727,7 +727,19 @@ Loop1:
 	mov edx,edi
 	add edx,hold						;add offset for hold
 	movzx eax,byte ptr[edx]
-	call WriteDec						;print hold status
+statKill:
+	cmp eax,stateKill
+	jne statHold
+	print "Killed"
+	jmp statFin
+statHold:
+	cmp eax,stateHold
+	jne statRun
+	print "Hold"
+	jmp statFin
+statRun:
+	print "Run"
+statFin:
 	;process and display run_time
 	call Crlf						;next line
 	print "		Run_time: "
@@ -835,23 +847,6 @@ cmdChangeLoop1:
 	jmp cmdChangeLoop1
 cmdChangeParamsGood:
 	println "Parameters are good"
-	 
-	mov edx, offset secParam
-	mov edi, edx
-	call strLength
-	mov ecx, eax
-	call parseDecimal32
-	
-	mov edi, offset firstParam
-	call findJob
-	cmp edi,0
-	je noJobFound
-	mov byte ptr [edi], al
-noJobFound:
-	println "No job found called:"
-	mov edx, offset firstParam
-	call WriteString
-	println " "
 	ret
 cmdChange ENDP
 
