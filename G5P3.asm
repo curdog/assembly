@@ -3,7 +3,13 @@ TITLE Assembly Program 1  by Group 3
 ; Description:    Assembly Program 1
 ; Class:          CSC
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
-; Revision date:  2/23
+; Revision date:  3/24/15
+; Purpose: To simulate a multi threaded operating system. This is accomplished
+;	by having a data structure that contains jobs, their priorities, how many 
+;	execution steps for the process to finish, and a flag byte containing data
+;	on the state of the program. The program takes a step command that will 
+;	simulate a step in the processor that decrements the job structure's time
+;	to live variable
 
 Include Irvine32.inc
 .386
@@ -678,7 +684,13 @@ cmdKillNoJob:
 	jmp cmdKillDone
 cmdKillCont:
 	add esi,hold						;edi contains the offset of the found job
+	cmp byte ptr[esi],stateHold
+	jne cmdKillChangeError
 	mov byte ptr[esi],stateKill			;rewrite the hold state over to the edi
+	println "Successfully killed job"
+	jmp cmdKillDone
+cmdKillChangeError:
+	Println "Set hold flag to hold before killing a job"
 cmdKillDone:
 	ret
 cmdKill ENDP
@@ -746,7 +758,13 @@ cmdShow ENDP
 ;needs 1 parameter <n>
 ;
 cmdStep PROC
-	call nullParams
+	.data
+	highestPriority byte 1 dup(11)
+	runTimeStep word 1 dup(0)
+	.code
+	mov highestPriority,11			;reset the highestPriority variable
+	mov runTimeStep,0				;reset runTimeStep
+	call nullParams					;reset the parameter variables
 	println "Step command entered"
 	;gete the first parameter
 	mov edi, offset inBuffer
@@ -770,6 +788,82 @@ cmdStepLoop1:
 	jmp cmdStepLoop1
 cmdStepParamsGood:
 	println "Parameter is good"
+	call strLength1
+	mov edx,offset firstParam
+	mov ecx,eax
+	call parseDecimal32			;result is in eax
+	mov runTimeStep,ax			;send the result to runTimeStep
+	mov edi,offset program
+	cmp byte ptr[edi],0
+	je cmdStepNoJobs
+	println "Jobs found, beginning execution"
+	sub edi,indexsize
+	;Find the highest priority job
+findHighestPriority:
+	add edi,indexsize
+	cmp byte ptr[edi],0			;check for the end of the job list
+	je cmdStepNext				;jump if end of list is found to cmdStepNext
+	;check to see if the program is in run mode
+	mov edx,edi
+	add edx,hold
+	mov ah,byte ptr[edx]
+	cmp ah,stateRun
+	jne findHighestPriority2		;jump if the program data isn't in the run state to the next program data
+	;check the priority of the data
+	mov edx,edi
+	add edx,priority			;offset to read the priority
+	mov ah,highestPriority
+	cmp byte ptr[edx],ah		;if the priority is higher then highestPriority then set highestPriority to that number
+	jg findHighestPriority2		;else just go back to the beginning of the loop and check the next index
+	mov ah,byte ptr[edx]
+	mov highestPriority,ah
+findHighestPriority2:
+	jmp findHighestPriority
+cmdStepNext:
+	;print out the highest priority now
+	print "Highest priority: "
+	movzx eax,highestPriority
+	call WriteDec
+	call Crlf
+	;start processing the run time variables
+	mov edi,offset program
+	sub edi,indexsize
+DecRunTime:
+	add edi,indexsize		;go to the next index
+	;check for the end of program data
+	cmp byte ptr[edi],0
+	je DecRunTimeDone		;go and decrement the runTimeStep value after stepping through the loop
+	;check the priority
+	mov edx,edi
+	add edx,priority
+	mov ah,byte ptr[edx]	;move the priority value into ah
+	mov al,highestPriority
+	cmp ah,al				;compare the data's priority value to the highestPriority's value
+	jne DecRunTime
+	mov edx,edi
+	add edx,runtime			;point edx to the runtime value of the program data
+	dec byte ptr[edx]		;decrement the value stord in the run time data
+	;check to see if that value has reached 0, if so go back and recalculate the lowest priority
+	cmp byte ptr[edx],0
+	jne DecRunTime			;don't care if it isn't 0, go back up to the decRunTime so you can continue cycling through the program data
+	mov edx,edi
+	add edx,hold			;want to kill the process
+	mov al,stateKill
+	mov byte ptr[edx],al	;kill that son of a bitch
+	mov highestPriority,11	;reset the highestPriority
+	jmp findHighestPriority	;go back up to find the highest priority
+DecRunTimeDone:
+	dec runTimeStep			;decrement runTimeStep
+	mov edi,offset program	;want to reset the data pointed to in edi to the program so you can cycle back through the data
+	sub edi,indexsize
+	mov ax,runTimeStep		;check to see if runTimeStep has reached 0
+	cmp ax,0
+	jg DecRunTime
+	jmp cmdStepDone
+
+cmdStepNoJobs:
+	println "There are no job entries"
+cmdStepDone:
 	ret
 cmdStep ENDP
 
@@ -858,7 +952,7 @@ MainStart:
 	mov edi,offset inBuffer
 	mov edx,BUFFERSIZE
 	mov al,0
-	call fillArray
+	call fillArray					;reset the input buffer to all null values
 	jmp MainStart					;infinite loop until user types 'quit'
 main ENDP
 
