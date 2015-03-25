@@ -20,9 +20,10 @@ ExitProcess PROTO, dwExistCode:DWORD
 	inBuffer byte 21 dup(0)
 	tempAddress dword 1 dup(0)	;temprory variable for holding the address of something
 	namesize equ 20
-	age equ 21					;offset of age in the person data structure
+	age equ 20					;offset of age in the person data structure
 	indexsize equ 22			;size of each data structure index
-	person byte indexsize*5 dup(0)
+	person byte indexsize*5+1 dup(0)
+	count byte 1 dup(0)
 .code
 ;macros
 ;
@@ -61,28 +62,6 @@ ENDM
 ;
 
 ;
-;printStructure
-;prints out all the data in the data structure
-;
-printStructure PROC
-	mov edi,offset person
-	sub edi,indexsize
-printLoop:
-	add edi,indexsize
-	mov al,byte ptr[edi]		;test
-	cmp byte ptr[edi],0
-	je printDone
-	mov edx,edi
-	call WriteString		;print the name
-	mov edx,edi
-	add edx,age				;go to the offset of the age
-	jmp printLoop			;go to the next part
-	call Crlf
-printDone:
-	ret
-printStructure ENDP
-
-;
 ;cpyString
 ;copies a string starting in edi to another variable in esi
 ;@set up:
@@ -101,15 +80,38 @@ cpyStringLoop:
 	cmp eax,0						;check for the null character
 	jne cpyStringLoop				;jump back if the null character isn't encountered
 cpyStringDone:
-	inc esi
-	mov byte ptr[esi],0
-	inc edi
-	mov byte ptr[edi],0
-	pop edi
 	pop esi
+	pop edi
 	pop eax
 	ret
 cpyString ENDP
+
+
+;
+;printStructure
+;prints out all the data in the data structure
+;
+printStructure PROC
+	mov edi,offset person
+	sub edi,indexsize
+printLoop:
+	add edi,indexsize
+	cmp byte ptr[edi],0
+	je printDone			;check for the end of the data structure
+	print "Name: "
+	mov edx,edi
+	call WriteString		;print the name
+	;print the age
+	print "		Age: "
+	mov edx,edi
+	add edx,age				;go to the offset of the age
+	movzx eax,byte ptr[edx]
+	call WriteDec			;print the decimal
+	call Crlf
+	jmp printLoop			;go to the next part
+printDone:
+	ret
+printStructure ENDP
 
 ;
 ;enterName
@@ -119,6 +121,9 @@ enterName PROC
 	mov edx,offset inBuffer
 	mov ecx,sizeof inBuffer
 	call ReadString
+	;check if the user wants to quit
+	cmp inBuffer,0
+	je enterNameAlmostDone
 	;find the next available entry space for the byte
 	mov edi,offset person
 	sub edi,indexsize
@@ -127,18 +132,40 @@ findAvailableSpaceLoop:
 	mov al,byte ptr[edi]
 	cmp byte ptr[edi],0
 	jne findAvailableSpaceLoop
-
+	;shift edi and esi around to copy the string
 	push edi
 	mov edi,offset inBuffer
 	pop esi
 	call cpyString
+	;shift edi and esi back around to maintain what was being done
+	mov edi,esi
+	;prompt for and get the user's input for age
+getAge:
+	print "Enter an age value under 120: "
+	mov edx,offset inBuffer
+	mov ecx,sizeof inBuffer
+	call ReadString
+	cmp inBuffer,0				;branch if no age was entered
+	je enterNameAlmostDone
+	mov edx,offset inBuffer
+	mov ecx,sizeof inBuffer
+	call parseDecimal32
+	cmp eax,120
+	jg getAge
+	cmp eax,0
+	jl getAge
+	;after clearing the checks you can store the age
+	mov edx,edi
+	add edx,age
+	mov byte ptr[edx],al
+	jmp enterNameDone
+enterNameAlmostDone:
+	mov count,5
+enterNameDone:
 	ret
 enterName ENDP
 
 main PROC
-	.data
-	count byte 1 dup(0)
-	.code
 	println "Welcome to the big brother census program"
 mainLoop:
 	call enterName
