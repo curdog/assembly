@@ -1,15 +1,13 @@
 TITLE Assembly Program 3  by Group 5
 
-; Description:    Assembly Program 3
+; Description:    Assembly Exam Program 2
 ; Class:          CSC 323
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
-; Revision date:  3/24/15
-; Purpose: To simulate a multi threaded operating system. This is accomplished
-;	by having a data structure that contains jobs, their priorities, how many 
-;	execution steps for the process to finish, and a flag byte containing data
-;	on the state of the program. The program takes a step command that will 
-;	simulate a step in the processor that decrements the job structure's time
-;	to live variable
+; Revision date:  3/25/15
+; Purpose: To display an understand of how data structures work
+;	in assembly. This program takes a user's input for a name and 
+;	a value for an age. It then stores that information in a data 
+;	structure that is accessed using pointers. 
 
 Include Irvine32.inc
 .386
@@ -20,7 +18,7 @@ ExitProcess PROTO, dwExistCode:DWORD
 	inBuffer byte 21 dup(0)
 	tempAddress dword 1 dup(0)	;temprory variable for holding the address of something
 	namesize equ 20
-	age equ 20					;offset of age in the person data structure
+	age equ 21					;offset of age in the person data structure
 	indexsize equ 22			;size of each data structure index
 	person byte indexsize*5+1 dup(0)
 	count byte 1 dup(0)
@@ -62,6 +60,24 @@ ENDM
 ;
 
 ;
+;fillArray
+;@setup
+;mov edi,offset array
+;mov ecx,sizeof array
+;mov al,(desired content to fill)
+;
+fillArray PROC
+	dec edi
+fillArrayLoop:
+	inc edi
+	mov byte ptr[edi],al
+	dec ecx
+	cmp ecx,0
+	jg fillArrayLoop
+	ret
+fillArray ENDP
+
+;
 ;cpyString
 ;copies a string starting in edi to another variable in esi
 ;@set up:
@@ -85,6 +101,19 @@ cpyStringDone:
 	pop eax
 	ret
 cpyString ENDP
+
+;
+;strToInt
+;converts a string to an integer value
+;@setup
+;mov edx,offset str
+;mov ecx,sizeof str
+;@return
+;eax=the value converted
+strToInt PROC
+	call parseDecimal32
+	ret
+strToInt ENDP
 
 
 ;
@@ -138,18 +167,27 @@ findAvailableSpaceLoop:
 	pop esi
 	call cpyString
 	;shift edi and esi back around to maintain what was being done
-	mov edi,esi
-	;prompt for and get the user's input for age
+	mov edx,esi
+	jmp enterNameDone
+enterNameAlmostDone:
+	mov count,5
+enterNameDone:
+	ret
+enterName ENDP
+
+;
+;enterAge
+;prompts a user to enter an age value and retrieves their age
+;
+enterAge PROC;prompt for and get the user's input for age
 getAge:
 	print "Enter an age value under 120: "
 	mov edx,offset inBuffer
 	mov ecx,sizeof inBuffer
 	call ReadString
-	cmp inBuffer,0				;branch if no age was entered
-	je enterNameAlmostDone
 	mov edx,offset inBuffer
 	mov ecx,sizeof inBuffer
-	call parseDecimal32
+	call strToInt
 	cmp eax,120
 	jg getAge
 	cmp eax,0
@@ -158,23 +196,30 @@ getAge:
 	mov edx,edi
 	add edx,age
 	mov byte ptr[edx],al
-	jmp enterNameDone
-enterNameAlmostDone:
-	mov count,5
-enterNameDone:
 	ret
-enterName ENDP
+enterAge ENDP
 
 main PROC
 	println "Welcome to the big brother census program"
+	println "When entering names enter an empty string to exit"
 mainLoop:
 	call enterName
+	mov edi,edx
+	cmp count,5
+	je mainLoopDone
+	call enterAge
+	println "--------------------------------------------------"
+	println "Current contents of the data structure: "
+	call printStructure
+	println "--------------------------------------------------"
 	inc count
 	cmp count,5
 	jl mainLoop
-	println "Finished processing information"
-	println "The entries are as follows: "
+mainLoopDone:
+	println "--------------------------------------------------"
+	println "Final contents of the data structure: "
 	call printStructure
+	println "--------------------------------------------------"
 	call Waitmsg
 	INVOKE ExitProcess,0
 main ENDP
