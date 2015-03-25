@@ -1,7 +1,7 @@
-TITLE Assembly Program 1  by Group 3
+TITLE Assembly Program 3  by Group 5
 
-; Description:    Assembly Program 1
-; Class:          CSC
+; Description:    Assembly Program 3
+; Class:          CSC 323
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 ; Revision date:  3/24/15
 ; Purpose: To simulate a multi threaded operating system. This is accomplished
@@ -259,6 +259,8 @@ Start:	nop
 	mov al, byte ptr [esi]
 	mov ah, byte ptr [edi]
 	cmp ah, NULL		;end of string and equal
+	je Equal
+	cmp al,NULL
 	je Equal	
 	cmp ah, al			;compare chars
 	jne NotEqu			;quit early NOTE: will quit if one is NULL and other not	
@@ -275,6 +277,41 @@ cmpStringFin:
 	pop esi	
 	ret
 cmpString ENDP
+
+;
+;cmpStringAbs
+;checks the absolute string
+;@setup
+;mov edi,offset str1
+;mov esi,offset str2
+;@return 
+;eax=1 if strings equal, eax=0 if not equal
+;
+cmpStringAbs PROC
+	push esi
+	push edi
+StartCmpStringAbs:	nop
+	mov al, byte ptr [esi]
+	mov ah, byte ptr [edi]
+	cmp ah, al			;compare chars
+	jne cmpNotEqu			;quit early NOTE: will quit if one is NULL and other not
+	cmp ah, NULL		;end of string and equal
+	je cmpEqual
+	cmp al,NULL
+	je cmpEqual		
+	inc esi
+	inc edi
+	jmp StartCmpStringAbs
+cmpNotEqu: nop 			;not equal case 
+	mov eax,0
+	jmp cmpStringAbsFin
+cmpEqual:	nop		  ;equal case
+	mov eax,1
+cmpStringAbsFin:
+	pop edi
+	pop esi	
+	ret
+cmpStringAbs ENDP
 
 ;
 ;switchCmd
@@ -355,8 +392,9 @@ findJob PROC
 	sub esi,indexsize
 findJobLoop:
 	add esi,indexsize
+	cmp byte ptr[esi],0
 	je findJob404				;if pointer reaches an uninitalized data then the job doesn't exist
-	call cmpString
+	call cmpStringAbs
 	cmp eax,1
 	je findJobDone
 	mov al,byte ptr[esi]
@@ -502,6 +540,25 @@ Loop2:
 	jmp Loop2					;loop until a correct input is entered
 parametersCorrect:
 	;;;start processing load command
+	;Look for a duplicate job in the list
+	mov edx,offset program
+	sub edx,indexsize
+checkExistingName:
+	add edx,indexsize
+	mov eax,edx
+	cmp byte ptr[eax],0
+	je checkExistingNameDone
+	mov edi,eax
+	mov esi,offset firstParam
+	call cmpStringAbs
+	cmp eax,1			;1 if a duplicate job is encountered
+	je jobFound
+	jmp checkExistingName
+jobFound:
+	println "Already existing job found"
+	jmp cmdLoadDone
+checkExistingNameDone:
+
 	;display all the parameters and what they have done. 
 	println "New job entered"
 	print "Name: "
@@ -557,15 +614,16 @@ priorityCont:
 	mov edx,offset thirdParam
 	call ParseInteger32			;32 bit integer in eax
 runTimeCheck:
-	cmp eax,10000				;Any value over 10k is not accepted
+	cmp eax,512				;Any value over 10k is not accepted
 	jle runTimeCheckDone
-	print "You entered too large of a number, please enter a number less then 10000: "
+	print "You entered too large of a number, please enter a number less then 512: "
 	call ReadDec
 	jmp runTimeCheck
 runTimeCheckDone:
 	mov edi,tempAddress
 	add edi,runtime
 	mov [edi],eax
+cmdLoadDone:
 	ret
 cmdLoad ENDP
 
@@ -582,9 +640,6 @@ cmdHold PROC
 	mov edx,1
 	call getParams
 	;start processing hold command
-	mov edx,offset firstParam
-	call WriteString
-	call Crlf
 	;Look for the job
 	mov edi,offset firstParam
 	call findJob
@@ -595,6 +650,7 @@ cmdHold PROC
 	mov edx,esi					;edi contains the address of the job now
 	call WriteString
 	call Crlf
+	println "Chaning job state to hold"
 	jmp cmdHoldCont
 cmdHoldNoJob:
 	println "Job does not exist"
@@ -626,15 +682,10 @@ firstParamError:
 	mov ecx, sizeof firstParam
 	call ReadString
 firstParamNoError:
-	println "No errors in processing parameters"
-	;display the parameter
-	mov edx, offset firstParam
-	call WriteString
-	call Crlf
 	;start processing data for run command
 	;Look for the job
 	mov edi,offset firstParam
-	mov esi,offset program			;test
+	mov esi,offset program
 	call findJob
 	cmp edi,0
 	je cmdRunNoJob
@@ -644,9 +695,10 @@ firstParamNoError:
 	call Crlf
 	jmp cmdRunCont
 cmdRunNoJob:
-	println "Not job is found to match"
+	println "Job does not exist"
 	jmp cmdRunDone
 cmdRunCont:
+	println "Changing job state to run"
 	add esi,hold						;edi contains the offset of the found job
 	mov byte ptr[esi],stateRun					;rewrite the hold state over to the edi
 cmdRunDone:
@@ -664,10 +716,6 @@ cmdKill PROC
 	mov esi, offset firstParam
 	mov edx,1
 	call getParams
-	;display the parameters
-	mov edx,offset firstParam
-	call WriteString
-	call Crlf
 	;Look for the job
 	mov edi,offset firstParam
 	call findJob
@@ -678,6 +726,7 @@ cmdKill PROC
 	mov edx,esi					;edi contains the address of the job now
 	call WriteString
 	call Crlf
+	println "Changing job state to killed"
 	jmp cmdKillCont
 cmdKillNoJob:
 	println "Job does not exist"
@@ -833,6 +882,11 @@ DecRunTime:
 	;check for the end of program data
 	cmp byte ptr[edi],0
 	je DecRunTimeDone		;go and decrement the runTimeStep value after stepping through the loop
+	;check the state
+	mov edx,edi
+	add edx,hold
+	cmp byte ptr[edx],stateRun
+	jne DecRunTime
 	;check the priority
 	mov edx,edi
 	add edx,priority
@@ -845,7 +899,8 @@ DecRunTime:
 	dec byte ptr[edx]		;decrement the value stord in the run time data
 	;check to see if that value has reached 0, if so go back and recalculate the lowest priority
 	cmp byte ptr[edx],0
-	jne DecRunTime			;don't care if it isn't 0, go back up to the decRunTime so you can continue cycling through the program data
+	jne DecRunTimeDone
+	;jne DecRunTime			;don't care if it isn't 0, go back up to the decRunTime so you can continue cycling through the program data
 	mov edx,edi
 	add edx,hold			;want to kill the process
 	mov al,stateKill
@@ -860,7 +915,6 @@ DecRunTimeDone:
 	cmp ax,0
 	jg DecRunTime
 	jmp cmdStepDone
-
 cmdStepNoJobs:
 	println "There are no job entries"
 cmdStepDone:
@@ -920,7 +974,6 @@ cmdChangeParamsGood:
 	call ReadInt
 	jmp cmdChangeParamsGood
 cmdChangeCont:
-	println "Parameters are good"
 	mov edi, offset firstParam
 	call findJob
 	cmp edi,0
@@ -929,10 +982,7 @@ cmdChangeCont:
 	mov byte ptr [esi], al
 	ret
 noJobFound:
-	println "No job found called:"
-	mov edx, offset firstParam
-	call WriteString
-	call Crlf
+	println "Job not found"
 	ret
 cmdChange ENDP
 
