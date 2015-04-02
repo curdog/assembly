@@ -26,7 +26,8 @@ NAME_C 		equ 2						;name of node
 DQUEUE_C	equ 3						;end index of queue
 EQUEUE_C 	equ 4						;start index of queue
 QUEUE_C 	equ 5 						;set size to 10 to start
-QUEUE_S 	equ 10 * QUEUE_SS			;queue size
+QUEUE_N		equ 10
+QUEUE_S 	equ QUEUE_N * QUEUE_SS			;queue 
 RXARRPTR_C 	equ QUEUE_C + QUEUE_S		;array pointer for rx queue
 RXARRPTC_S 	equ RXARRPTR_C + 4			;size of rx array
 TXARRPTR_C 	equ RXARRPTR_S + 1			;array pointer of pointers for tx queue
@@ -101,7 +102,7 @@ endp nodeinit
 
 
 ;helper functions
-
+;======================================
 ;adds element to queue
 ;msg ptr in eax
 ;nodeptr from in edi
@@ -110,15 +111,37 @@ encqueue proc
 	pushad
 	mov ebx, [edi + EQUEUE_C]
 	inc ebx						;temporary increment
+	
+	push eax					;mod for circular
+	mov eax, ebx
+	mov eax, QUEUE_S
+	call moduOp
+	mov ebx,eax
+	pop eax
+	
 	cmp [edi+DQUEUE_C], ebx
-	jz Equal					;full
+	jz Full						;full
  	;copy
 	mov [edi+EQUEUE_C], ebx 	;save new index
+	;calculate index
+	push eax
+	xor eax,eax
+	mov al, byte ptr [edi+EQUEUE_C]
+	mul QUEUE_SS				;calculate offset of mesg
+	add eax,edi					;add to addr of node
+	mov ebx,eax
+	pop eax
 	
-	
-	
-	mov edx, QUEUE_SS
-Equal:
+	xor ecx,ecx					;zero
+Copy:
+	mov edx,byte ptr[eax+ecx]				;move
+	mov byte ptr[ebx+ecx+QUEUE_S], edx
+	inc ecx
+	cmp ecx, QUEUE_SS						;check size
+	jl Copy
+	clc
+	jmp Done
+Full:
 	setc
 Done:
 	popad
@@ -126,12 +149,48 @@ endp encqueue
 
 ;msg ptr in eax
 ;nodeptr in edi
-;zflag if full
+;cflag if full
 dequeue proc
+	cmp
 	
+	
+	xor ecx,ecx								;zero
+Copy:
+	mov edx,byte ptr[eax+ecx]				;move
+	mov byte ptr[ebx+ecx+QUEUE_S], edx
+	inc ecx
+	cmp ecx, QUEUE_SS						;check size
+	jl Copy
+	clc
+	jmp Done	
+	
+Empty:
+	setc
+Done:
+	popad
 endp dequeue
 
+;performs modulus
+;eax --- number
+;ebx --- radius
+;return
+;eax --- result
+proc moduOp
+	push edx
+	push ecx
+	
+	xor edx, edx
+	mov ecx, ebx
+	div ecx
+	mov eax, edx
+	
+	pop ecx
+	pop edx
+	ret
+endm moduOp
+
 ;node functions (local level)
+;=============================
 handletx proc
 
 endp handletx
@@ -141,6 +200,7 @@ handlerx proc
 endp handlerx
 
 ;process functions (world level)
+;===============================
 txstep proc
 
 endp txstep
@@ -151,11 +211,64 @@ endp rxstep
 
 open
 
-logMesg proc
+;log processing
+;===============================
+.data
+;used in functions
+logFileHandle dword 0
+;used everywhere else
+logFileName byte 80 dup(0)
+logFileLogStr byte 120 dup(0)
+.code
 
+;writes line to log
+;automagically appends \n
+;edx - offset of string
+;ecx - charaters to write
+;cf set if not successful
+logMesg proc
+	pushad
+	mov eax, logFileHandle
+	call WriteToFile
+	cmp eax, ecx
+	jz Good
+	setc
+	popad
+	ret
+Good:
+	clc
+	popad
+	ret
 endp logMesg
 
+;opens a log file
+;edx - filename offset
+;carry flag if not good
+logOpen proc
+	pushad
+	call CreateOutputFile
+	mov logFileHandle, eax
+	cmp eax, INVALID_HANDLE_VALUE
+	jz Good
+	setc
+	popad
+	ret
+Good:
+	clc
+	popad
+	ret
+endp logOpen
 
+;
+;close logfile
+;zf if not good
+logClose proc
+	pushad
+	mov eax, logFileHandle
+	call CloseFile
+	cmp eax, 0	;set zf if not good
+	popad
+endp logClose
 
 ;entry point
 main proc
