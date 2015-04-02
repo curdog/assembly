@@ -147,23 +147,16 @@ Done:
 	popad
 endp encqueue
 
-;msg ptr in eax
 ;nodeptr in edi
 ;cflag if full
 dequeue proc
-	cmp
+	mov ebx, [edi + DQUEUE_C]
+	cmp ebx, [edi + EQUEUE_C]
+	jz Empty
 	
-	
-	xor ecx,ecx								;zero
-Copy:
-	mov edx,byte ptr[eax+ecx]				;move
-	mov byte ptr[ebx+ecx+QUEUE_S], edx
-	inc ecx
-	cmp ecx, QUEUE_SS						;check size
-	jl Copy
+	dec ebx
 	clc
-	jmp Done	
-	
+	jmp Done
 Empty:
 	setc
 Done:
