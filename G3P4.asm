@@ -17,7 +17,6 @@ QUEUE_REC	equ 3	;message received flag 0-no  AOV-yes
 QUEUE_TTL	equ 4	;Time to Live (and let die)
 QUEUE_MSG_S	equ 5	;Size of message (constant for now, place holder for awesome)
 QUEUE_MSG_V equ 6	;Message value
-
 QUEUE_SS 	equ 10	;total message size (for now)
 		
 ;node structure
@@ -59,12 +58,20 @@ nodeinit proc
 	mov [edi + NAME_C], 'A'
 	mov [edi + DQUEUE_C], 0
 	mov [edi + EQUEUE_C], 0
-	
-	mov [edi + RXARRPTC_C],  
+	  
 	mov [edi + RXARRPTC_S], 3
 	
-	mov [edi + TXARRPTC_C],
+
 	;move other rx buffer offsets here
+	;math for A
+	
+	mov [edi + TXARRPTC_C],
+	;math for B
+	mov [edi + TXARRPTC_C],	
+	;math for C
+	mov [edi + TXARRPTC_C],	
+	;math for D
+	
 	mov eax, edi
 	add eax, 4
 	
@@ -96,15 +103,32 @@ endp nodeinit
 ;helper functions
 
 ;adds element to queue
-;data in eax
-;nodeptr in edi
+;msg ptr in eax
+;nodeptr from in edi
+;cflag if full
 encqueue proc
-
+	pushad
+	mov ebx, [edi + EQUEUE_C]
+	inc ebx						;temporary increment
+	cmp [edi+DQUEUE_C], ebx
+	jz Equal					;full
+ 	;copy
+	mov [edi+EQUEUE_C], ebx 	;save new index
+	
+	
+	
+	mov edx, QUEUE_SS
+Equal:
+	setc
+Done:
+	popad
 endp encqueue
 
-
+;msg ptr in eax
+;nodeptr in edi
+;zflag if full
 dequeue proc
-
+	
 endp dequeue
 
 ;node functions (local level)
@@ -124,6 +148,14 @@ endp txstep
 rxstep proc
 
 endp rxstep
+
+open
+
+logMesg proc
+
+endp logMesg
+
+
 
 ;entry point
 main proc
