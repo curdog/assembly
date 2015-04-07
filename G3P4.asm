@@ -56,21 +56,21 @@ nodeinit proc
 	;node a
 	;use edx for offsets for now
 	mov [edi + SIZE_C], notesptr_s
-	mov [edi + NAME_C], 'A'
-	mov [edi + DQUEUE_C], 0
-	mov [edi + EQUEUE_C], 0
+	mov byte ptr[edi + NAME_C], 'A'
+	mov byte ptr[edi + DQUEUE_C], 0
+	mov byte ptr[edi + EQUEUE_C], 0
 	  
-	mov [edi + RXARRPTC_S], 3
+	mov byte ptr[edi + RXARRPTC_S], 3
 	
 
 	;move other rx buffer offsets here
 	;math for A
 	
-	mov [edi + TXARRPTC_C],
+;	mov [edi + TXARRPTC_C],
 	;math for B
-	mov [edi + TXARRPTC_C],	
+;	mov [edi + TXARRPTC_C],	
 	;math for C
-	mov [edi + TXARRPTC_C],	
+;	mov [edi + TXARRPTC_C],	
 	;math for D
 	
 	mov eax, edi
@@ -78,24 +78,24 @@ nodeinit proc
 	
 	mov [edi + TXARRPTC_S], 3
 	
-	mov [edi + CONNS_C],
+;	mov [edi + CONNS_C],
 	mov eax, edi
 	add eax, CONNS_C
 	
-	mov [eax], 'B'
-	mov [eax + 1], 'C'
-	mov [eax + 2], 'D'
+	mov byte ptr [eax], 'B'
+	mov byte ptr[eax + 1], 'C'
+	mov byte ptr[eax + 2], 'D'
 	
 	;change node
-	add edi + nodesptr_s
+	add edi, nodesptr_s
 	;node b
 
 	;change node
-	add edi + nodesptr_s	
+	add edi, nodesptr_s	
 	;node c
 
 	;change node
-	add edi + nodesptr_s
+	add edi, nodesptr_s
 	;node d
 	popad
 endp nodeinit
