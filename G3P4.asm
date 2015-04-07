@@ -50,61 +50,93 @@ welcome_msg byte "Welcome to the Nodetrix!!!",0
 bye_msg     byte "Congrats on taking the blue pill",0
 file_msg	byte "Enter File Name",0
 
+;test node structure
+;constants in the structure
+;byte name				- character value A through F
+;byte connections		- number of connections to the node
+;dword txqueue			- address of the transmit queue
+;dword inPtrtxqueue		- pointer to the receiving queue?
+;dword outPtrtxqueue	- pointer to the transmit queue?
+;variable space in the structure
+;note: multiplied for how many connections there are
+;dword node				- pointer to a connected node
+;dword tx				- pointer to that node's tx queue
+;dword rx				- pointer to that node's rx queue
+;dword connection		- pointer from tx to rx?
+nodes byte 2000 dup(0)
+
+;constants for pulling data from the structure
+;constant structure data fields
+;total size: 14 bytes
+name			equ		0		;offset of the name					size: 1 byte
+connections		equ		1		;offset of the connections			size: 1 byte
+txqueue			equ		2		;offset of the txqueue				size: 4 bytes
+inPtrtxqueue	equ		6		;offset of the inPtrtxqueue			size: 4 bytes
+outPtrtxqueue	equ		10		;offset of the outPtrtxqueue		size: 4 bytes
+conststructsize	equ		14		;size of the constant space in each node
+;variable sized structure data fields
+;total size: 16 bytes
+nextNode		equ		14		;offset of the next node pointer	size: 4 bytes
+nodetx			equ		18		;offset of the next node tx pointer	size: 4 bytes
+noderx			equ		22		;offset of the next node rx pointer	size: 4 bytes
+nodeConnection	equ		26		;offset of the next node connection	size: 4 bytes
+varNodeSize		equ		16		;size of each variable space in the node
+
 .code
-;init of nodes
-nodeinit proc
-	pushad
-	;node size
-	mov ebx, nodesptr_s
-	push ebx
-	mov edi, offset nodesptr
-	;node a
-	;use edx for offsets for now
-	mov word ptr[edi + SIZE_C], nodesptr_s
-	mov byte ptr[edi + NAME_C], 'A'
-	mov byte ptr[edi + DQUEUE_C], 0
-	mov byte ptr[edi + EQUEUE_C], 0
-	  
-	mov byte ptr[edi + RXARRPTR_S], 3
-	
+;
+;Macros
+;
+;print
+;takes in a string literal and prints it out
+;@text a string literal to pass
+;
+print MACRO text
+	LOCAL str
+	.data
+	str byte text,0
+	.code
+	push edx
+	mov edx, offset str
+	call WriteString
+	pop edx
+ENDM
+;
+;println
+;takes in a string literal and prints it out along with a CR and LF
+;@text a string literal to pass
+;
+println MACRO text
+	LOCAL str
+	.data
+	str byte text,0Dh,0Ah,0
+	.code
+	push edx
+	mov edx, offset str
+	call WriteString
+	pop edx
+ENDM
 
-	;move other rx buffer offsets here
-	;math for A
-	
-;	mov [edi + TXARRPTC_C],
-	;math for B
-;	mov [edi + TXARRPTC_C],	
-	;math for C
-;	mov [edi + TXARRPTC_C],	
-	;math for D
-	
-	mov eax, edi
-	add eax, 4
-	
-	mov byte ptr[edi + TXARRPTR_S], 3
-	
-;	mov [edi + CONNS_C],
-	mov eax, edi
-	add eax, CONNS_C
-	
-	mov byte ptr [eax], 'B'
-	mov byte ptr[eax + 1], 'C'
-	mov byte ptr[eax + 2], 'D'
-	
-	;change node
-	add edi, nodesptr_s
-	;node b
+;
+;initNodes
+;initializes all the nodes in the network
+;
+initNodes PROC
+	mov edi,offset nodes		;move into edi the offset of the nodes structure
+	;initialize the A node
+	;A has 2 connections
+	mov edx, edi				;copy address over to temporary space
+	mov byte ptr[edx],'A'		;move the A connection name into the structure
+	;calculate the offset of the 'B' node to input into the pointer of A
+	mov ebx,edi					;copy a temporary offset into ebx
+	add ebx,constNodeSize		;add the constantNodeSize
+	add	ebx,varNodeSize				;add the variable node size
+	add ebx,varNodeSize				;There's 2 nodes, add twice
+	mov edx,edi
+	add edx,connections
+	mov byte ptr[edx],2
 
-	;change node
-	add edi, nodesptr_s	
-	;node c
-
-	;change node
-	add edi, nodesptr_s
-	;node d
-	popad
 	ret
-nodeinit endp 
+initNodes ENDP
 
 
 ;helper functions
@@ -294,7 +326,7 @@ logClose endp
 
 ;entry point
 main proc
-	call nodeinit
+	call initNodes
 	call logOpen
 	mov edx, offset welcome_msg
 	call WriteString
@@ -305,5 +337,6 @@ main proc
 	mov edx, offset bye_msg
 	call logClose
 	call WriteString
+	INVOKE ExitProcess,0
 main endp 
 END main
