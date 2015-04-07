@@ -27,7 +27,7 @@ DQUEUE_C	equ 3						;end index of queue
 EQUEUE_C 	equ 4						;start index of queue
 QUEUE_C 	equ 5 						;set size to 10 to start
 QUEUE_N		equ 10
-QUEUE_S 	equ QUEUE_N * QUEUE_SS			;queue 
+QUEUE_S 	equ QUEUE_N * QUEUE_SS	dup(0)		;queue 
 RXARRPTR_C 	equ QUEUE_C + QUEUE_S		;array pointer for rx queue
 RXARRPTR_S 	equ RXARRPTR_C + 4			;size of rx array
 TXARRPTR_C 	equ RXARRPTR_S + 1			;array pointer of pointers for tx queue
@@ -41,9 +41,13 @@ DATA_C 		equ CONNS_C + 4				;start of the data portion
 
 ;4 nodes to start, all connected
 ;              |---------------formula-------------| * #nodes
-nodesptr byte ( 25 +    QUEUE_S * QUEUE_SS + 3 * 12) * 4     dup(0)
-nodesptr_s equ ( 25 +    QUEUE_S * QUEUE_SS + 3 * 12) * 4
+nodesptr byte  1000     dup(0)
+nodesptr_s equ 1000
 ;node
+
+;=======Strings=======
+welcome_msg byte "Welcome to the Nodetrix!!!",0
+bye_msg bye byte "Congrats on taking the blue pill",0
 
 .code
 ;init of nodes
@@ -188,22 +192,42 @@ moduOp endp
 
 ;node functions (local level)
 ;=============================
+;performs inner node operations
+;node in edi
 handletx proc
+	pushad
+;have msg?
 
+;for each conn
+;set des rxptr to txptr -> queue
+
+
+	popad
+	ret
 handletx endp 
-
+	
 handlerx proc
-
+	pushad
+	
+	popad
+	ret
 handlerx endp 
 
 ;process functions (world level)
 ;===============================
+;performs outer node operations
 txstep proc
-
+	pushad
+	;for each node
+		;do handletx
+	popad
+	ret
 txstep endp 
 
 rxstep proc
-
+	pushad
+	popad
+	ret
 rxstep endp 
 
 
@@ -269,5 +293,15 @@ logClose endp
 ;entry point
 main proc
 	call nodeinit
+	call logOpen
+	mov edx offset welcome_msg
+	call WriteString
+	
+	call txstep
+	call rxstep
+	
+	mov edx offset bye_bsg
+	call logClose
+	call WriteString
 main endp 
 END main
