@@ -4,7 +4,7 @@
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 
 .486
-.model flat, stdcall
+;.model flat, stdcall
 
 Include Irvine32.inc
 .data
@@ -27,9 +27,9 @@ DQUEUE_C	equ 3						;end index of queue
 EQUEUE_C 	equ 4						;start index of queue
 QUEUE_C 	equ 5 						;set size to 10 to start
 QUEUE_N		equ 10
-QUEUE_S 	equ QUEUE_N * QUEUE_SS			;queue 
+QUEUE_S 	equ QUEUE_N * QUEUE_SS	;queue 
 RXARRPTR_C 	equ QUEUE_C + QUEUE_S		;array pointer for rx queue
-RXARRPTC_S 	equ RXARRPTR_C + 4			;size of rx array
+RXARRPTR_S 	equ RXARRPTR_C + 4			;size of rx array
 TXARRPTR_C 	equ RXARRPTR_S + 1			;array pointer of pointers for tx queue
 TXARRPTR_S 	equ TXARRPTR_C + 4			;size of tx array
 CONNS_C 	equ TXARRPTR_S + 1			;string array of connection names
@@ -41,9 +41,14 @@ DATA_C 		equ CONNS_C + 4				;start of the data portion
 
 ;4 nodes to start, all connected
 ;              |---------------formula-------------| * #nodes
-nodesptr byte ( 25 +    QUEUE_S * QUEUE_SS + 3 * 12) * 4     dup(0)
-nodesptr_s equ ( 25 +    QUEUE_S * QUEUE_SS + 3 * 12) * 4
+nodesptr byte  1000     dup(0)
+nodesptr_s equ 1000
 ;node
+
+;=======Strings=======
+welcome_msg byte "Welcome to the Nodetrix!!!",0
+bye_msg     byte "Congrats on taking the blue pill",0
+file_msg	byte "Enter File Name",0
 
 .code
 ;init of nodes
@@ -52,15 +57,15 @@ nodeinit proc
 	;node size
 	mov ebx, nodesptr_s
 	push ebx
-	mov edi, nodesptr
+	mov edi, offset nodesptr
 	;node a
 	;use edx for offsets for now
-	mov [edi + SIZE_C], notesptr_s
+	mov word ptr[edi + SIZE_C], nodesptr_s
 	mov byte ptr[edi + NAME_C], 'A'
 	mov byte ptr[edi + DQUEUE_C], 0
 	mov byte ptr[edi + EQUEUE_C], 0
 	  
-	mov byte ptr[edi + RXARRPTC_S], 3
+	mov byte ptr[edi + RXARRPTR_S], 3
 	
 
 	;move other rx buffer offsets here
@@ -76,7 +81,7 @@ nodeinit proc
 	mov eax, edi
 	add eax, 4
 	
-	mov [edi + TXARRPTC_S], 3
+	mov byte ptr[edi + TXARRPTR_S], 3
 	
 ;	mov [edi + CONNS_C],
 	mov eax, edi
@@ -98,7 +103,8 @@ nodeinit proc
 	add edi, nodesptr_s
 	;node d
 	popad
-endp nodeinit
+	ret
+nodeinit endp 
 
 
 ;helper functions
@@ -127,25 +133,28 @@ encqueue proc
 	push eax
 	xor eax,eax
 	mov al, byte ptr [edi+EQUEUE_C]
-	mul QUEUE_SS				;calculate offset of mesg
+	mov ecx, QUEUE_SS
+	mul ecx			;calculate offset of mesg
 	add eax,edi					;add to addr of node
 	mov ebx,eax
 	pop eax
 	
 	xor ecx,ecx					;zero
 Copy:
-	mov edx,byte ptr[eax+ecx]				;move
-	mov byte ptr[ebx+ecx+QUEUE_S], edx
+	movzx edx,byte ptr[eax+ecx]				;move
+	xor eax,eax
+	mov al,byte ptr[ebx+ecx+QUEUE_S]
+	mov edx, eax
 	inc ecx
 	cmp ecx, QUEUE_SS						;check size
 	jl Copy
 	clc
 	jmp Done
 Full:
-	setc
+;	setc
 Done:
 	popad
-endp encqueue
+encqueue endp 
 
 ;nodeptr in edi
 ;cflag if full
@@ -158,17 +167,17 @@ dequeue proc
 	clc
 	jmp Done
 Empty:
-	setc
+;	setc
 Done:
 	popad
-endp dequeue
+dequeue endp 
 
 ;performs modulus
 ;eax --- number
 ;ebx --- radius
 ;return
 ;eax --- result
-proc moduOp
+moduOp proc 
 	push edx
 	push ecx
 	
@@ -180,29 +189,48 @@ proc moduOp
 	pop ecx
 	pop edx
 	ret
-endm moduOp
+moduOp endp 
 
 ;node functions (local level)
 ;=============================
+;performs inner node operations
+;node in edi
 handletx proc
+	pushad
+;have msg?
 
-endp handletx
+;for each conn
+;set des rxptr to txptr -> queue
 
+
+	popad
+	ret
+handletx endp 
+	
 handlerx proc
-
-endp handlerx
+	pushad
+	
+	popad
+	ret
+handlerx endp 
 
 ;process functions (world level)
 ;===============================
+;performs outer node operations
 txstep proc
-
-endp txstep
+	pushad
+	;for each node
+		;do handletx
+	popad
+	ret
+txstep endp 
 
 rxstep proc
+	pushad
+	popad
+	ret
+rxstep endp 
 
-endp rxstep
-
-open
 
 ;log processing
 ;===============================
@@ -225,14 +253,14 @@ logMesg proc
 	call WriteToFile
 	cmp eax, ecx
 	jz Good
-	setc
+;	setc
 	popad
 	ret
 Good:
 	clc
 	popad
 	ret
-endp logMesg
+logMesg endp 
 
 ;opens a log file
 ;edx - filename offset
@@ -243,14 +271,14 @@ logOpen proc
 	mov logFileHandle, eax
 	cmp eax, INVALID_HANDLE_VALUE
 	jz Good
-	setc
+;	setc
 	popad
 	ret
 Good:
 	clc
 	popad
 	ret
-endp logOpen
+logOpen endp 
 
 ;
 ;close logfile
@@ -261,9 +289,21 @@ logClose proc
 	call CloseFile
 	cmp eax, 0	;set zf if not good
 	popad
-endp logClose
+	ret
+logClose endp 
 
 ;entry point
 main proc
 	call nodeinit
-endp main
+	call logOpen
+	mov edx, offset welcome_msg
+	call WriteString
+	
+	call txstep
+	call rxstep
+	
+	mov edx, offset bye_msg
+	call logClose
+	call WriteString
+main endp 
+END main

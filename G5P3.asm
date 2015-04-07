@@ -48,6 +48,7 @@ nodesptr_s equ 1000
 ;=======Strings=======
 welcome_msg byte "Welcome to the Nodetrix!!!",0
 bye_msg     byte "Congrats on taking the blue pill",0
+file_msg	byte "Enter File Name",0
 
 .code
 ;init of nodes
