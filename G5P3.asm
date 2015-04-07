@@ -27,7 +27,7 @@ DQUEUE_C	equ 3						;end index of queue
 EQUEUE_C 	equ 4						;start index of queue
 QUEUE_C 	equ 5 						;set size to 10 to start
 QUEUE_N		equ 10
-QUEUE_S 	equ QUEUE_N * QUEUE_SS	dup(0)		;queue 
+QUEUE_S 	equ QUEUE_N * QUEUE_SS	;queue 
 RXARRPTR_C 	equ QUEUE_C + QUEUE_S		;array pointer for rx queue
 RXARRPTR_S 	equ RXARRPTR_C + 4			;size of rx array
 TXARRPTR_C 	equ RXARRPTR_S + 1			;array pointer of pointers for tx queue
@@ -47,7 +47,7 @@ nodesptr_s equ 1000
 
 ;=======Strings=======
 welcome_msg byte "Welcome to the Nodetrix!!!",0
-bye_msg bye byte "Congrats on taking the blue pill",0
+bye_msg     byte "Congrats on taking the blue pill",0
 
 .code
 ;init of nodes
@@ -294,13 +294,13 @@ logClose endp
 main proc
 	call nodeinit
 	call logOpen
-	mov edx offset welcome_msg
+	mov edx, offset welcome_msg
 	call WriteString
 	
 	call txstep
 	call rxstep
 	
-	mov edx offset bye_bsg
+	mov edx, offset bye_msg
 	call logClose
 	call WriteString
 main endp 
