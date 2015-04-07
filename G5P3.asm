@@ -288,6 +288,7 @@ logClose proc
 	call CloseFile
 	cmp eax, 0	;set zf if not good
 	popad
+	ret
 logClose endp 
 
 ;entry point
