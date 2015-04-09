@@ -46,6 +46,7 @@ nodesptr_s equ 1000
 ;node
 
 ;=======Strings=======
+char		byte 2 dup(0)		;used for temporarily printing out character values
 welcome_msg byte "Welcome to the Nodetrix!!!",0
 bye_msg     byte "Congrats on taking the blue pill",0
 file_msg	byte "Enter File Name",0
@@ -73,7 +74,7 @@ connections		equ		1		;offset of the connections			size: 1 byte
 txqueue			equ		2		;offset of the txqueue				size: 4 bytes
 inPtrtxqueue	equ		6		;offset of the inPtrtxqueue			size: 4 bytes
 outPtrtxqueue	equ		10		;offset of the outPtrtxqueue		size: 4 bytes
-conststructsize	equ		14		;size of the constant space in each node
+constNodesize	equ		14		;size of the constant space in each node
 ;variable sized structure data fields
 ;total size: 16 bytes
 nextNode		equ		14		;offset of the next node pointer	size: 4 bytes
@@ -122,8 +123,10 @@ ENDM
 ;
 initNodes PROC
 	mov edi,offset nodes		;move into edi the offset of the nodes structure
+
 	;initialize the A node
-	;A has 2 connections
+	println "Initializing the A node..."
+	;A has 2 connections	(B F)
 	mov edx, edi				;copy address over to temporary space
 	mov byte ptr[edx],'A'		;move the A connection name into the structure
 	;calculate the offset of the 'B' node to input into the pointer of A
@@ -133,10 +136,109 @@ initNodes PROC
 	add ebx,varNodeSize				;There's 2 nodes, add twice
 	mov edx,edi
 	add edx,connections
-	mov byte ptr[edx],2
+	mov byte ptr[edx],2			;2 connections added
 
+	;initialize the B node
+	println "Initializing the B node..."
+	;B has 3 connections	(A C F)
+	add edi,constNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize			;coming from A so add 2 variable node connections to the offset
+	mov edx,edi
+	mov byte ptr[edx],'B'		;put the 'B' in
+	mov edx,edi
+	add edx,connections			;move to the offset of the connections field
+	mov byte ptr[edx],3			;3 connections to the node (A C F)
+
+	;initialize the C node
+	;C has 3 connections (B D F)
+	println "Initializing the C node..."
+	add edi,constNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize			;coming from B so add 3 variable node connections to the offset
+	mov edx,edi
+	mov byte ptr[edx],'C'		;move the C value into the C node
+	mov edx,edi
+	add edx,connections
+	mov byte ptr[edx],3			;3 connections to the C node (B D E)
+
+	;initialize the D node
+	;D has 2 connections (C E)
+	println "Initializing the D node..."
+	add edi,constNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize			;coming from C so add 3 variable node connections to the offset
+	mov edx,edi
+	mov byte ptr[edx],'D'		;move the 'D' value into the structure
+	add edx,connections
+	mov byte ptr[edx],2			;2 connections to the D node (C E)
+
+	;initialize the E node
+	;E has 3 connections (C D F)
+	println "Initializing the E node..."
+	add edi,constNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize			;coming from D which has 2 variable connections
+	mov edx,edi
+	mov byte ptr[edx],'E'		;move the 'E' value into the E node
+	add edx,connections
+	mov byte ptr[edx],3			;3 connections to the node (C D F)
+
+	;initialize the F node
+	;F has 3 connections (A C E)
+	println "Initializing the F node..."
+	add edi,constNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize
+	add edi,varNodeSize			;coming from E which has 3 variable connections
+	mov edx,edi
+	mov byte ptr[edx],'F'		;put the 'F' value into the F node
+	add edx,connections
+	mov byte ptr[edx],3			;3 connections to the F node (A C E)
+
+	println "Initialization complete."
 	ret
 initNodes ENDP
+
+;
+;dispNodes
+;displays all of the nodes and their contents
+;displays memory addresses where necessary
+;
+dispNodes PROC
+	mov edi,offset nodes
+	mov ecx,6				;6 nodes, will want to loop 6 times
+dispLoop:
+	;display the character of the node
+	print "Node: "
+	mov ebx,offset char		;move offset of the character "string"
+	mov al,byte ptr[edi]	;node character moved into eax
+	mov byte ptr[ebx],al	;copy the contents of the character of the node over to the character "string"
+	mov edx,offset char
+	call WriteString		;print the character
+	;display the number of connections
+	print "	Connections: "
+	mov edx,edi
+	add edx,connections		;move to the offset of the connections
+	movzx eax,byte ptr[edx]	;move the contents number of connections over to the eax register
+	call WriteDec			;and print it out
+	
+	;go to the next node
+	add edi,constNodeSize	;add the constant node size to skip over the constant space
+varNodeSizeLoop:
+	add edi,varNodeSize		;add the variable node size for each connection
+	dec eax
+	cmp eax,0
+	jg varNodeSizeLoop		;cycle through the variable structure space
+
+	println " "				;throw out the carriage return for orderly data
+	dec ecx
+	cmp ecx,0				;have we reached the end of the structure yet?
+	jg dispLoop				;if not, jump back up the beginning of dispNodes
+	ret
+dispNodes ENDP
 
 
 ;helper functions
@@ -327,6 +429,7 @@ logClose endp
 ;entry point
 main proc
 	call initNodes
+	call dispNodes
 	call logOpen
 	mov edx, offset welcome_msg
 	call WriteString
@@ -337,6 +440,7 @@ main proc
 	mov edx, offset bye_msg
 	call logClose
 	call WriteString
+	call Waitmsg			;just wait up at the end for now
 	INVOKE ExitProcess,0
 main endp 
 END main
