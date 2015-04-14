@@ -137,11 +137,21 @@ initNodes PROC
 	mov edx,edi
 	add edx,connections
 	mov byte ptr[edx],2			;2 connections added
+	;initialize the node connection pointers
+	;initialize the B node connection pointer
+	add edi,constNodeSize
+	mov byte ptr[edi],'B'		;Puts 'B' into the location manually, it isn't initialized yet
+	mov eax,edi
+	add eax,varNodeSize			;point eax to the B node
+	add eax,varNodeSize
+	mov edx,edi
+	sub edx,constNodeSize		;reset to the initial node A connection so that you can offset to the connection
+	add edx,nodeConnection		;offset to the node connection so you can link the two nodes up
+	mov dword ptr[edx],eax		;should be the location of B
 
 	;initialize the B node
 	println "Initializing the B node..."
 	;B has 3 connections	(A C F)
-	add edi,constNodeSize
 	add edi,varNodeSize
 	add edi,varNodeSize			;coming from A so add 2 variable node connections to the offset
 	mov edx,edi
@@ -226,9 +236,29 @@ dispLoop:
 	call WriteDec			;and print it out
 	
 	;go to the next node
+	println "	Connections: "
 	add edi,constNodeSize	;add the constant node size to skip over the constant space
 varNodeSizeLoop:
+	;display what the structure is pointing to
+	print "Node: "
+	mov ebx,offset char
+	push eax
+	mov al,byte ptr[edi]
+	mov byte ptr[ebx],al
+	mov edx,offset char
+	call WriteString		;print out the node name
+	pop eax
+
+	;print out the memory location of the node
+	print "		Address: "
+	mov edx,edi
+	sub edx,constNodeSize	;reset to the beginning so you can print the node connection address
+	add edx,nodeConnection
+	mov eax,dword ptr[edx]
+	call WriteDec			;print the address
+
 	add edi,varNodeSize		;add the variable node size for each connection
+	println " "				;print a carriage return
 	dec eax
 	cmp eax,0
 	jg varNodeSizeLoop		;cycle through the variable structure space
