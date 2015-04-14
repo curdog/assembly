@@ -83,6 +83,14 @@ noderx			equ		22		;offset of the next node rx pointer	size: 4 bytes
 nodeConnection	equ		26		;offset of the next node connection	size: 4 bytes
 varNodeSize		equ		16		;size of each variable space in the node
 
+;offfsets for the different nodes
+aOffset			equ		0
+bOffset			equ		aOffset+constNodesize+varNodeSize*2		;2 variable connections from A
+cOffset			equ		bOffset+constNodesize+varNodeSize*3		;3 variable connections from B
+dOffset			equ		cOffset+constNodesize+varNodeSize*3		;3 variable connections from C
+eOffset			equ		dOffset+constNodesize+varNodeSize*2		;2 variable connections from D
+fOffset			equ		eOffset+constNodesize+varNodeSize*3		;3 variable connections from E
+
 .code
 ;
 ;Macros
@@ -139,20 +147,27 @@ initNodes PROC
 	mov byte ptr[edx],2			;2 connections added
 	;initialize the node connection pointers
 	;initialize the B node connection pointer
-	add edi,constNodeSize
+	add edi,constNodeSize		;point edi to the beginning of the variable node structure part
 	mov byte ptr[edi],'B'		;Puts 'B' into the location manually, it isn't initialized yet
-	mov eax,edi
-	add eax,varNodeSize			;point eax to the B node
-	add eax,varNodeSize
+	mov eax,offset nodes
+	add eax,bOffset				;point eax to the B node's address
 	mov edx,edi
 	sub edx,constNodeSize		;reset to the initial node A connection so that you can offset to the connection
 	add edx,nodeConnection		;offset to the node connection so you can link the two nodes up
 	mov dword ptr[edx],eax		;should be the location of B
+	;;initialize the F node connection pointer
+	add edi,varNodeSize
+	mov byte ptr[edi],'F'		;F isn't initialized yet so just throw the letter straight into it
+	mov eax,offset nodes
+	add eax,fOffset				;point eax to node F's location
+	mov edx,edi
+	sub edx,constNodeSize		;reset edx to the beginning of node A with an offset of 1 varNodeSize
+	add edx,nodeConnection		;point edx to the node connection field
+	mov dword ptr[edx],eax		;location of F is now in the data structure
 
 	;initialize the B node
 	println "Initializing the B node..."
 	;B has 3 connections	(A C F)
-	add edi,varNodeSize
 	add edi,varNodeSize			;coming from A so add 2 variable node connections to the offset
 	mov edx,edi
 	mov byte ptr[edx],'B'		;put the 'B' in
@@ -240,22 +255,22 @@ dispLoop:
 	add edi,constNodeSize	;add the constant node size to skip over the constant space
 varNodeSizeLoop:
 	;display what the structure is pointing to
-	print "Node: "
+	print "	Node: "
 	mov ebx,offset char
-	push eax
+	push eax				;save eax
 	mov al,byte ptr[edi]
 	mov byte ptr[ebx],al
 	mov edx,offset char
 	call WriteString		;print out the node name
-	pop eax
 
-	;print out the memory location of the node
+	;print out the memory location of the connected node
 	print "		Address: "
 	mov edx,edi
 	sub edx,constNodeSize	;reset to the beginning so you can print the node connection address
 	add edx,nodeConnection
 	mov eax,dword ptr[edx]
 	call WriteDec			;print the address
+	pop eax					;pop eax
 
 	add edi,varNodeSize		;add the variable node size for each connection
 	println " "				;print a carriage return
@@ -263,12 +278,25 @@ varNodeSizeLoop:
 	cmp eax,0
 	jg varNodeSizeLoop		;cycle through the variable structure space
 
-	println " "				;throw out the carriage return for orderly data
 	dec ecx
 	cmp ecx,0				;have we reached the end of the structure yet?
 	jg dispLoop				;if not, jump back up the beginning of dispNodes
 	ret
 dispNodes ENDP
+
+;
+;dispConnections
+;displays all the nodes and how they're connected to one another
+;uses a kind of graphic display with ascii characters
+;
+dispConnections PROC
+	println "   B-----------C"
+	println "  / \____ ____/ \"
+	println " A       X       D"
+	println "  \ /---/ \---\ /"
+	println "   F-----------E"
+	ret
+dispConnections ENDP
 
 
 ;helper functions
@@ -461,15 +489,12 @@ main proc
 	call initNodes
 	call dispNodes
 	call logOpen
-	mov edx, offset welcome_msg
-	call WriteString
+	call dispConnections
 	
 	call txstep
 	call rxstep
 	
-	mov edx, offset bye_msg
 	call logClose
-	call WriteString
 	call Waitmsg			;just wait up at the end for now
 	INVOKE ExitProcess,0
 main endp 
