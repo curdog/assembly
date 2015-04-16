@@ -167,61 +167,185 @@ initNodes PROC
 
 	;initialize the B node
 	println "Initializing the B node..."
-	;B has 3 connections	(A C F)
+	;B has 3 connections	(A C E)
 	add edi,varNodeSize			;coming from A so add 2 variable node connections to the offset
 	mov edx,edi
 	mov byte ptr[edx],'B'		;put the 'B' in
 	mov edx,edi
 	add edx,connections			;move to the offset of the connections field
 	mov byte ptr[edx],3			;3 connections to the node (A C F)
+	;;time to link up the nodes to B
+	;link A node to B node
+	mov edx,edi					;move the pointer over to the temporary space
+	add edx,nodeConnection		;move to the pointer location of the first node
+	mov eax,offset nodes
+	mov dword ptr[edx],eax		;move the pointer address over to the structure
+	mov al,byte ptr[eax]
+	mov edx,edi					;copy the address of B over to edx again
+	add edx,nextNode			;offset to the next node
+	mov byte ptr[edx],al		;move the character A over into the data Structure
+	;link C node to B node
+	add edi,varNodeSize			;go to the next variable node size
+	mov edx,edi
+	add edx,nextNode			;set to the next node
+	mov byte ptr[edx],'C'		;C isn't initialized yet so just throw it in there
+	sub edx,nextNode			;set back to point to pointer location
+	add edx,nodeConnection		;offset to the pointer location
+	mov eax,offset nodes
+	add eax,cOffset				;add to the offset of nodes the offset of C node
+	mov dword ptr[edx],eax
+	;link E node to B node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode
+	mov byte ptr[edx],'E'		;move the character in since that node isn't initialized yet
+	sub edx,nextNode
+	add edx,nodeConnection		;set edx to the offset of the nodeConnection so you can link the two together
+	mov eax,offset nodes
+	add eax,eOffset				;add the offset of the E node to the nodes address
+	mov dword ptr[edx],eax
 
 	;initialize the C node
 	;C has 3 connections (B D F)
 	println "Initializing the C node..."
 	add edi,constNodeSize
-	add edi,varNodeSize
-	add edi,varNodeSize
 	add edi,varNodeSize			;coming from B so add 3 variable node connections to the offset
 	mov edx,edi
 	mov byte ptr[edx],'C'		;move the C value into the C node
 	mov edx,edi
 	add edx,connections
 	mov byte ptr[edx],3			;3 connections to the C node (B D E)
+	;;time to initialize all the node connections
+	;link C node to B node
+	mov edx,edi
+	add edx,nextNode
+	mov eax,offset nodes
+	add eax,bOffset				;move the B node offset to eax so you can pull the character value
+	mov al,byte ptr[eax]		;move the character over
+	mov byte ptr[edx],al		;throw that character into the structure
+	sub edx,nextNode
+	add edx,nodeConnection		;set to the node connection field
+	mov eax,offset nodes
+	add eax,bOffset				;pull B node's address
+	mov dword ptr[edx],eax		;copy the address over
+	;link C node to D node
+	add edi,varNodeSize
+	mov edx,edi					;copy into a temporary pointer holder
+	add edx,nextNode			;offset to the nextNode field
+	mov byte ptr[edx],'D'		;D isn't initialized so just put the character in manually
+	sub edx,nextNode
+	add edx,nodeConnection		;offset to the nodeConnection field
+	mov eax,offset nodes
+	add eax,dOffset				;offset eax to the D node
+	mov dword ptr[edx],eax		;move the pointer over to the nodeConection field
+	;link C node to F node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode			;offset to the nextNode field
+	mov byte ptr[edx],'F'		;manually put F in because the F node isn't initialized yet
+	sub edx,nextNode
+	add edx,nodeConnection		;offset to the nodeConnection field
+	mov eax,offset nodes
+	add eax,fOffset				;offset eax to the F node's address
+	mov dword ptr[edx],eax		;move the F node's address into the nodeConnection field
 
 	;initialize the D node
 	;D has 2 connections (C E)
 	println "Initializing the D node..."
 	add edi,constNodeSize
-	add edi,varNodeSize
-	add edi,varNodeSize
 	add edi,varNodeSize			;coming from C so add 3 variable node connections to the offset
 	mov edx,edi
 	mov byte ptr[edx],'D'		;move the 'D' value into the structure
 	add edx,connections
 	mov byte ptr[edx],2			;2 connections to the D node (C E)
+	;;link up the nodes connected to D
+	;link C node to D node
+	mov edx,edi
+	add edx,nextNode			;offset edx to the nextNode field
+	mov eax,offset nodes
+	add eax,cOffset				;offset eax to the C node
+	mov al,byte ptr[eax]		;move the C character over to al
+	mov byte ptr[edx],al		;move the C character over to the nextNode field
+	sub edx,nextNode
+	add edx,nodeConnection		;reoffset to the nodeConnection field
+	mov eax,offset nodes
+	add eax,cOffset				;offset eax to the C node
+	mov dword ptr[edx],eax		;move the address into the nodeConnection field
+	;link E node to D node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode			;offset edx to the nextNode field
+	mov byte ptr[edx],'E'		;E isn't initialized so move the character manually
+	sub edx,nextNode
+	add edx,nodeConnection		;offset edx to the nodeConnection field
+	mov eax,offset nodes
+	add eax,eOffset				;move the offset of E node into eax
+	mov dword ptr[edx],eax		;move the address of E node into the nodeConnection field
 
 	;initialize the E node
-	;E has 3 connections (C D F)
+	;E has 3 connections (B D F)
 	println "Initializing the E node..."
 	add edi,constNodeSize
-	add edi,varNodeSize
 	add edi,varNodeSize			;coming from D which has 2 variable connections
 	mov edx,edi
 	mov byte ptr[edx],'E'		;move the 'E' value into the E node
 	add edx,connections
-	mov byte ptr[edx],3			;3 connections to the node (C D F)
+	mov byte ptr[edx],3			;3 connections to the node (B D F)
+	;;link the nodes to the E node
+	;link the B node to the E node
+	mov edx,edi
+	add edx,nextNode			;offset to the nextNode field
+	mov eax,offset nodes
+	add eax,bOffset				;offset eax to the B node
+	mov al,byte ptr[eax]		;move the character over to al
+	mov byte ptr[edx],al		;move the B node character over to the nextNode field
+	sub edx,nextNode
+	add edx,nodeConnection		;offset to the nodeConnection field
+	mov eax,offset nodes
+	add eax,bOffset				;offset eax to the B node
+	mov dword ptr[edx],eax		;move the B node address into the nodeConnection field
+	;link the D node to the E node
+	add edi,varNodeSize			;offset to the next variable node structure
+	mov edx,edi
+	add edx,nextNode			;point edx to the nextNode field
+	mov eax,offset nodes
+	add eax,dOffset				;move the D address into eax
+	mov bl,byte ptr[eax]
+	mov byte ptr[edx],bl		;move the D character over to the nextNode field
+	sub edx,nextNode
+	add edx,nodeConnection		;offset edx to the nodeConnection field
+	mov dword ptr[edx],eax		;move the address of the D node to the nodeConnection field
+	;link the F node to the E node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode
+	mov byte ptr[edx],'F'		;manually move the F character over since F isn't initialized
+	sub edx,nextNode
+	add edx,nodeConnection		;offset to the nodeConnection field
+	mov eax,offset nodes
+	add eax,fOffset				;move the F offset into eax
+	mov dword ptr[edx],eax		;move the pointer over
 
 	;initialize the F node
 	;F has 3 connections (A C E)
 	println "Initializing the F node..."
 	add edi,constNodeSize
-	add edi,varNodeSize
-	add edi,varNodeSize
 	add edi,varNodeSize			;coming from E which has 3 variable connections
 	mov edx,edi
 	mov byte ptr[edx],'F'		;put the 'F' value into the F node
 	add edx,connections
 	mov byte ptr[edx],3			;3 connections to the F node (A C E)
+	;;link the F node with other nodes
+	;link the A node with the F node
+	mov edx,edi
+	add edx,nextNode			;point edx to the nextNode field
+	mov eax,offset nodes
+	add eax,aOffset				;point eax to the A node
+	mov bl,byte ptr[eax]		;move the character over to bl
+	mov byte ptr[edx],bl		;move the character value over to the nextNode field
+	;;;;;;;
+	;link the C node with the F node
+	;link the E node with the F node
 
 	println "Initialization complete."
 	ret
