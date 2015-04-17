@@ -56,8 +56,8 @@ file_msg	byte "Enter File Name",0
 ;byte name				- character value A through F
 ;byte connections		- number of connections to the node
 ;dword txqueue			- address of the transmit queue
-;dword inPtrtxqueue		- pointer to the receiving queue?
-;dword outPtrtxqueue	- pointer to the transmit queue?
+;dword inPtr			- pointer to the receiving queue?
+;dword outPtr			- pointer to the transmit queue?
 ;variable space in the structure
 ;note: multiplied for how many connections there are
 ;dword node				- pointer to a connected node
@@ -72,8 +72,8 @@ nodes byte 2000 dup(0)
 name			equ		0		;offset of the name					size: 1 byte
 connections		equ		1		;offset of the connections			size: 1 byte
 txqueue			equ		2		;offset of the txqueue				size: 4 bytes
-inPtrtxqueue	equ		6		;offset of the inPtrtxqueue			size: 4 bytes
-outPtrtxqueue	equ		10		;offset of the outPtrtxqueue		size: 4 bytes
+inPtr			equ		6		;offset of the inPtrtxqueue			size: 4 bytes
+outPtr			equ		10		;offset of the outPtrtxqueue		size: 4 bytes
 constNodesize	equ		14		;size of the constant space in each node
 ;variable sized structure data fields
 ;total size: 16 bytes
@@ -343,9 +343,31 @@ initNodes PROC
 	add eax,aOffset				;point eax to the A node
 	mov bl,byte ptr[eax]		;move the character over to bl
 	mov byte ptr[edx],bl		;move the character value over to the nextNode field
-	;;;;;;;
+	sub edx,nextNode
+	add edx,nodeConnection		;offset edx to the nodeConnection field
+	mov dword ptr[edx],eax		;move node A's address into the nodeConnection field
 	;link the C node with the F node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode			;offset to the nextNode field
+	mov eax,offset nodes
+	add eax,cOffset				;offset eax to to the C node
+	mov bl,byte ptr[eax]		;move the character to bl
+	mov byte ptr[edx],bl		;move the character over to the nextNode field
+	sub edx,nextNode
+	add edx,nodeConnection		;offset edx to the nodeConnection field
+	mov dword ptr[edx],eax		;move the address of the C node into the nodeConnection field
 	;link the E node with the F node
+	add edi,varNodeSize
+	mov edx,edi
+	add edx,nextNode			;move edx to the nextNode field
+	mov eax,offset nodes
+	add eax,eOffset				;position eax to the E node address
+	mov bl,byte ptr[eax]		;move the character over to the bl register
+	mov byte ptr[edx],bl
+	sub edx,nextNode
+	add edx,nodeConnection		;offset to the nodeConnection field
+	mov dword ptr[edx],eax		;move E's address into the nodeConnection field
 
 	println "Initialization complete."
 	ret
@@ -421,6 +443,10 @@ dispConnections PROC
 	println "   F-----------E"
 	ret
 dispConnections ENDP
+
+;
+;dispMenu
+;displays the menu so that the user can choose a command to execute
 
 
 ;helper functions
