@@ -466,66 +466,40 @@ exitProgram ENDP
 
 ;helper functions
 ;======================================
+
 ;adds element to queue
-;msg ptr in eax
-;nodeptr from in edi
+;source node in eax
 ;cflag if full
 encqueue proc
 	pushad
-	mov ebx, [edi + EQUEUE_C]
-	inc ebx						;temporary increment
-	
-	push eax					;mod for circular
-	mov eax, ebx
-	mov eax, QUEUE_S
-	call moduOp
-	mov ebx,eax
-	pop eax
-	
-	cmp [edi+DQUEUE_C], ebx
-	jz Full						;full
- 	;copy
-	mov [edi+EQUEUE_C], ebx 	;save new index
-	;calculate index
-	push eax
-	xor eax,eax
-	mov al, byte ptr [edi+EQUEUE_C]
-	mov ecx, QUEUE_SS
-	mul ecx			;calculate offset of mesg
-	add eax,edi					;add to addr of node
-	mov ebx,eax
-	pop eax
-	
-	xor ecx,ecx					;zero
-Copy:
-	movzx edx,byte ptr[eax+ecx]				;move
-	xor eax,eax
-	mov al,byte ptr[ebx+ecx+QUEUE_S]
-	mov edx, eax
-	inc ecx
-	cmp ecx, QUEUE_SS						;check size
-	jl Copy
-	clc
-	jmp Done
-Full:
-;	setc
+	;check for full
+	mov ebx, eax + inPtr
+	mov ecx, eax + outPrt
+	cmp ebx, ecx
+	je MaybeFull
+JustKidding:
+	imul 
+
+		
 Done:
+	clc
 	popad
+	ret
+MaybeFull:
+	cmp byte ptr[eax + eax ],0 ;check first byte for 0 if so empty
+	je JustKidding
+Full:
+	setc
+	popad
+	ret
 encqueue endp 
 
-;nodeptr in edi
+;source node in eax
+;dest xmtpointer in ebx
 ;cflag if full
 dequeue proc
-	mov ebx, [edi + DQUEUE_C]
-	cmp ebx, [edi + EQUEUE_C]
-	jz Empty
-	
-	dec ebx
-	clc
-	jmp Done
-Empty:
-;	setc
-Done:
+	pushad
+	;ch
 	popad
 dequeue endp 
 
@@ -596,7 +570,8 @@ rxstep endp
 logFileHandle dword 0
 ;used everywhere else
 logFileName byte 80 dup(0)
-logFileLogStr byte 120 dup(0)
+logFileLogStr byte "C:\\node_log.txt",0
+logFileLogStrr byte 80 dup(0)
 .code
 
 ;writes line to log
