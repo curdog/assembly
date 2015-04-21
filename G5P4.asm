@@ -469,6 +469,7 @@ exitProgram ENDP
 
 ;adds element to queue
 ;source node in eax
+;source buff in esi
 ;cflag if full
 encqueue proc
 	pushad
@@ -478,9 +479,28 @@ encqueue proc
 	cmp ebx, ecx
 	je MaybeFull
 JustKidding:
-	imul 
-
-		
+	add ebx, QUEUE_SS
+	;check overflow
+	push eax
+	xor ecx, ecx
+	mov ecx, ebx
+	;check exceeds the follow
+	;queueptr + QUEUE_SS * size of queue
+	mov eax, QUEUE_SS
+	mov edx, 10 ; TODO: change to queuesize
+	imul edx
+	add ecx, eax
+	cmp  ecx, dword ptr [eax + inPtr]
+	je Adjust
+	
+Adjust:	
+	pop eax
+	;start move
+	mov ecx, QUEUE_SS
+	cld
+	mov edi, ebx
+Moving:
+	rep movsb	
 Done:
 	clc
 	popad
