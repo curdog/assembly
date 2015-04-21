@@ -13,7 +13,6 @@ buffer		byte	25	 dup(0)		;used for input
 dest		byte	1	 dup(0)		;destination node
 source		byte	1	 dup(0)		;source node
 char		byte	2	 dup(0)		;used for temporarily printing out character values
-msg			byte	20	 dup(0)		;holds the transmission message
 
 ;
 ;message structure
@@ -24,6 +23,7 @@ QUEUE_TTL		equ 4	;Time to Live (and let die)
 QUEUE_MSG_SIZE	equ 5	;Size of message (constant for now, place holder for awesome)
 QUEUE_MSG		equ 6	;Message value
 QUEUE_SS 		equ 12	;total message size (for now)
+msg				byte	QUEUE_SS	 dup(0)		;holds the transmission message structure
 
 ;=======Strings=======
 welcome_msg byte "Welcome to the Nodetrix!!!",0
@@ -466,40 +466,66 @@ exitProgram ENDP
 
 ;helper functions
 ;======================================
-
 ;adds element to queue
-;source node in eax
+;msg ptr in eax
+;nodeptr from in edi
 ;cflag if full
 encqueue proc
 	pushad
-	;check for full
-	mov ebx, eax + inPtr
-	mov ecx, eax + outPrt
-	cmp ebx, ecx
-	je MaybeFull
-JustKidding:
-	imul 
-
-		
-Done:
+	mov ebx, [edi + EQUEUE_C]
+	inc ebx						;temporary increment
+	
+	push eax					;mod for circular
+	mov eax, ebx
+	mov eax, QUEUE_S
+	call moduOp
+	mov ebx,eax
+	pop eax
+	
+	cmp [edi+DQUEUE_C], ebx
+	jz Full						;full
+ 	;copy
+	mov [edi+EQUEUE_C], ebx 	;save new index
+	;calculate index
+	push eax
+	xor eax,eax
+	mov al, byte ptr [edi+EQUEUE_C]
+	mov ecx, QUEUE_SS
+	mul ecx			;calculate offset of mesg
+	add eax,edi					;add to addr of node
+	mov ebx,eax
+	pop eax
+	
+	xor ecx,ecx					;zero
+Copy:
+	movzx edx,byte ptr[eax+ecx]				;move
+	xor eax,eax
+	mov al,byte ptr[ebx+ecx+QUEUE_S]
+	mov edx, eax
+	inc ecx
+	cmp ecx, QUEUE_SS						;check size
+	jl Copy
 	clc
-	popad
-	ret
-MaybeFull:
-	cmp byte ptr[eax + eax ],0 ;check first byte for 0 if so empty
-	je JustKidding
+	jmp Done
 Full:
-	setc
+;	setc
+Done:
 	popad
-	ret
 encqueue endp 
 
-;source node in eax
-;dest xmtpointer in ebx
+;nodeptr in edi
 ;cflag if full
 dequeue proc
-	pushad
-	;ch
+	mov ebx, [edi + DQUEUE_C]
+	cmp ebx, [edi + EQUEUE_C]
+	jz Empty
+	
+	dec ebx
+	clc
+	jmp Done
+Empty:
+;	setc
+Done:
 	popad
 dequeue endp 
 
@@ -570,8 +596,7 @@ rxstep endp
 logFileHandle dword 0
 ;used everywhere else
 logFileName byte 80 dup(0)
-logFileLogStr byte "C:\\node_log.txt",0
-logFileLogStrr byte 80 dup(0)
+logFileLogStr byte 120 dup(0)
 .code
 
 ;writes line to log
@@ -623,6 +648,20 @@ logClose proc
 	popad
 	ret
 logClose endp 
+
+;
+;makeMsg
+;creates the message that will be sent between nodes
+;will have a header that consists of the following fields
+;Destination - 1 byte, will hold the destination node of the message
+;Source		 - 1 byte, will hold the source node of the message
+;Origin		 - 1 byte, will hold the node that sent the message
+;TTL		 - 1 byte, time to live, how many hops the message will perform
+;MessageSize - 1 byte, size of the message to transmit
+;Message	 - equivalent to the MessageSize field
+makeMsg PROC
+	ret
+makeMsg ENDP
 
 ;
 ;switchMenu
