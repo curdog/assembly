@@ -474,8 +474,11 @@ exitProgram ENDP
 encqueue proc
 	pushad
 	;check for full
-	mov ebx, eax + inPtr
-	mov ecx, eax + outPrt
+	mov ebx, eax;
+	mov ecx, eax;
+	add ebx, inPtr
+	add ecx, outPtr
+	
 	cmp ebx, ecx
 	je MaybeFull
 JustKidding:
@@ -509,7 +512,7 @@ MaybeFull:
 	cmp byte ptr[eax + eax ],0 ;check first byte for 0 if so empty
 	je JustKidding
 Full:
-	setc
+;	setc
 	popad
 	ret
 encqueue endp 
