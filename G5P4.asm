@@ -116,6 +116,39 @@ ckEqual MACRO char, func
 ENDM
 
 ;
+;PROCEDURES
+;
+
+;
+;toUpperCase
+;steps through a null terminated string and converts all 
+;characters to uppercase
+;@set up
+;mov edx,offset str
+toUpperCase PROC
+	push edx
+	push eax
+	dec edx					;initialize edx so that it corrects to the first value when looping
+toUpperLoop:				;loop for stepping through the entire string
+	inc edx					;go to the next character value
+	mov eax,0				;clear eax
+	mov al,byte ptr[edx]	;move the character in the string to al so you can play around with it
+	cmp al,0
+	je toUpperDone			;loop back up to the toUpperLoop label if the character in the string is not a null terminator
+	cmp al,'a'
+	jl toUpperLoop			;nothing needs to be done because the character is less then 'a', so go back to toUpperLoop
+	cmp al,'z'
+	jg toUpperLoop
+	sub al,20h				;change character to upper case
+	mov byte ptr[edx],al	;move the character back into the string
+	jmp toUpperLoop
+toUpperDone:
+	pop eax
+	pop edx
+	ret
+toUpperCase ENDP
+
+;
 ;initNodes
 ;initializes all the nodes in the network
 ;
@@ -426,6 +459,7 @@ dispNodes ENDP
 ;
 transmitMessage PROC
 	println "Placeholder"
+	call makeMsg			;create the message that will be transmitted
 	ret
 transmitMessage ENDP
 
@@ -456,6 +490,35 @@ dispMenu PROC
 dispMenu ENDP
 
 ;
+;dispMsgStruct
+;displays the contents of the msg structure
+;will mainly be used for debugging and checking contents of the msg structure
+dispMsgStruct PROC
+	mov edx,offset char
+	inc edx
+	mov byte ptr[edx],0			;null terminate the character holder
+	;start working with the msg structure
+	mov edi,offset msg			;move the msg structure's address into edi
+	mov edx,edi
+	add edx,QUEUE_DEST
+	mov eax,0
+	mov al,byte ptr[edx]
+	mov char,al
+	print "Destination: "
+	mov edx,offset char
+	call WriteString			;print the destination
+	mov edx,offset msg
+	add edx,QUEUE_SRC
+	mov al,byte ptr[edx]
+	mov char,al
+	print "	Source: "
+	mov edx,offset char
+	call WriteString			;print the source
+	
+	ret
+dispMsgStruct ENDP
+
+;
 ;exitProgram
 ;exits the program
 ;in a function for ease of use
@@ -475,7 +538,7 @@ encqueue proc
 	add ecx, outPtr
 	
 	cmp ebx, ecx
-	je MaybeFull
+;	je MaybeFull
 JustKidding:
 	add ebx, QUEUE_SS
 	;check overflow
@@ -504,15 +567,15 @@ Done:
 	jmp Done
 Full:
 ;	setc
-Done:
+;Done:
 	popad
 encqueue endp 
 
 ;nodeptr in edi
 ;cflag if full
 dequeue proc
-	mov ebx, [edi + DQUEUE_C]
-	cmp ebx, [edi + EQUEUE_C]
+;	mov ebx, [edi + DQUEUE_C]
+;	cmp ebx, [edi + EQUEUE_C]
 	jz Empty
 	
 	dec ebx
@@ -655,6 +718,39 @@ logClose endp
 ;MessageSize - 1 byte, size of the message to transmit
 ;Message	 - equivalent to the MessageSize field
 makeMsg PROC
+getSource:
+	print "Enter source node: "
+	mov edx,offset buffer
+	mov ecx,sizeof buffer
+	call ReadString			;store character into buffer
+	mov edx,offset buffer
+	call toUpperCase
+	mov al,byte ptr[edx]	;move the character into entered into al
+	cmp al,'A'
+	jl getSource			;reprompt if character entered is less then 'A'
+	cmp al,'F'
+	jg getSource			;reprompt if character entered is greater then 'F'
+	mov edx,offset msg
+	add edx,QUEUE_SRC
+	mov byte ptr[edx],al		;move the character into the msg structure source field
+getDest:
+	print "Enter destination node: "
+	mov edx,offset buffer
+	mov ecx,sizeof buffer
+	call ReadString			;store the destination in buffer
+	mov edx,offset buffer
+	call toUpperCase
+	mov al,byte ptr[edx]	;move the character entered in al
+	cmp al,'A'
+	jl getDest				;if letter entered is less then 'A' then reprompt
+	cmp al,'F'
+	jg getDest				;if letter entered is greater then 'F' then reprompt
+	mov edx,offset msg
+	add edx,QUEUE_DEST
+	mov byte ptr[edx],al	;move the destination into the msg structure
+
+	println "Message contents: "
+	call dispMsgStruct
 	ret
 makeMsg ENDP
 
