@@ -463,48 +463,43 @@ exitProgram PROC
 	INVOKE ExitProcess,0
 exitProgram ENDP
 
-
-;helper functions
-;======================================
-;adds element to queue
-;msg ptr in eax
-;nodeptr from in edi
+;source node in eax
+;source buff in esi
 ;cflag if full
 encqueue proc
 	pushad
-	mov ebx, [edi + EQUEUE_C]
-	inc ebx						;temporary increment
+	;check for full
+	mov ebx, eax;
+	mov ecx, eax;
+	add ebx, inPtr
+	add ecx, outPtr
 	
-	push eax					;mod for circular
-	mov eax, ebx
-	mov eax, QUEUE_S
-	call moduOp
-	mov ebx,eax
-	pop eax
-	
-	cmp [edi+DQUEUE_C], ebx
-	jz Full						;full
- 	;copy
-	mov [edi+EQUEUE_C], ebx 	;save new index
-	;calculate index
+	cmp ebx, ecx
+	je MaybeFull
+JustKidding:
+	add ebx, QUEUE_SS
+	;check overflow
 	push eax
-	xor eax,eax
-	mov al, byte ptr [edi+EQUEUE_C]
-	mov ecx, QUEUE_SS
-	mul ecx			;calculate offset of mesg
-	add eax,edi					;add to addr of node
-	mov ebx,eax
-	pop eax
+	xor ecx, ecx
+	mov ecx, ebx
+	;check exceeds the follow
+	;queueptr + QUEUE_SS * size of queue
+	mov eax, QUEUE_SS
+	mov edx, 10 ; TODO: change to queuesize
+	imul edx
+	add ecx, eax
+	cmp  ecx, dword ptr [eax + inPtr]
+	je Adjust
 	
-	xor ecx,ecx					;zero
-Copy:
-	movzx edx,byte ptr[eax+ecx]				;move
-	xor eax,eax
-	mov al,byte ptr[ebx+ecx+QUEUE_S]
-	mov edx, eax
-	inc ecx
-	cmp ecx, QUEUE_SS						;check size
-	jl Copy
+Adjust:	
+	pop eax
+	;start move
+	mov ecx, QUEUE_SS
+	cld
+	mov edi, ebx
+Moving:
+	rep movsb	
+Done:
 	clc
 	jmp Done
 Full:
