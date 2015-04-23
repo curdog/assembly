@@ -16,27 +16,27 @@ char		byte	2	 dup(0)		;used for temporarily printing out character values
 
 ;
 ;message structure
-QUEUE_DEST 		equ 0	;message destination				
-QUEUE_SRC		equ 1	;message source
-QUEUE_ORG		equ 2	;message origin (last touched)
-QUEUE_TTL		equ 4	;Time to Live (and let die)
-QUEUE_MSG_SIZE	equ 5	;Size of message (constant for now, place holder for awesome)
-QUEUE_MSG		equ 6	;Message value
-QUEUE_SS 		equ 12	;total message size (for now)
-msg				byte	QUEUE_SS	 dup(0)		;holds the transmission message structure
+QUEUE_DEST 		equ 0	;message destination				-1 byte
+QUEUE_SRC		equ 1	;message source						-1 byte
+QUEUE_ORG		equ 2	;message origin (last touched)		-1 byte
+QUEUE_TTL		equ 3	;Time to Live (and let die)			-1 byte
+QUEUE_MSG		equ 4	;Message value						-10 bytes
+QUEUE_MSG_SIZE	equ 10	;Size of message, limits size of the message
+QUEUE_SS 		equ 15	;total message size (for now)
+msg				byte	QUEUE_SS*50	 dup(0)		;holds the transmission message structure, space for 50 msg structures
 
 ;=======Strings=======
 welcome_msg byte "Welcome to the Nodetrix!!!",0
 bye_msg     byte "Congrats on taking the blue pill",0
 file_msg	byte "Enter File Name",0
 
-;test node structure
+;node structure
 ;constants in the structure
 ;byte name				- character value A through F
 ;byte connections		- number of connections to the node
 ;dword txqueue			- address of the transmit queue
-;dword inPtr			- pointer to the receiving queue?
-;dword outPtr			- pointer to the transmit queue?
+;dword inPtr			- pointer to the receiving queue
+;dword outPtr			- pointer to the transmit queue
 ;variable space in the structure
 ;note: multiplied for how many connections there are
 ;dword node				- pointer to a connected node
@@ -147,6 +147,27 @@ toUpperDone:
 	pop edx
 	ret
 toUpperCase ENDP
+
+;
+;cpyString
+;copies a string starting in edi to another variable in esi
+;@set up:
+;mov edi,offset source
+;mov esi,offset target
+;
+cpyString PROC
+	push eax
+cpyStringLoop:
+	mov al,byte ptr[edi]			;move the contents of the source into eax
+	mov byte ptr[esi],al					;copy the contents into the target
+	inc edi
+	inc esi
+	cmp al,0						;check for the null character
+	jne cpyStringLoop				;jump back if the null character isn't encountered
+cpyStringDone:
+	pop eax
+	ret
+cpyString ENDP
 
 ;
 ;initNodes
@@ -484,8 +505,9 @@ dispConnections ENDP
 dispMenu PROC
 	println "1. Display node connections"
 	println "2. Display node information"
-	println "3. Transmit a string from one node to another"
-	println "4. Quit"
+	println "3. Create a message to transmit"
+	println "4. Step in time so messages transmit"
+	println "5. Quit"
 	ret
 dispMenu ENDP
 
@@ -514,6 +536,31 @@ dispMsgStruct PROC
 	print "	Source: "
 	mov edx,offset char
 	call WriteString			;print the source
+	;print out the origin of the message
+	print "	Org: "
+	mov edx,offset msg
+	add edx,QUEUE_ORG			;offset to the org field
+	mov al,byte ptr[edx]
+	mov char,al					;move the character into the character holder thinga ma bob
+	mov edx,offset char
+	mov ecx,sizeof char
+	call WriteString			;print out the org field
+	;print out the TTL of the message
+	print "	TTL: "
+	mov edx,offset msg
+	add edx,QUEUE_TTL
+	mov al,byte ptr[edx]		;move the TTL into al
+	add al,30h					;cast TTL to a character value
+	mov char,al					;store TTL character value into the char holder
+	mov edx,offset char
+	mov ecx,sizeof char
+	call WriteString			;print the TTL field out
+	;print out the msg field
+	println " "
+	print "Message: "
+	mov edx,offset msg
+	add edx,QUEUE_MSG
+	call WriteString
 	
 	ret
 dispMsgStruct ENDP
@@ -748,11 +795,43 @@ getDest:
 	mov edx,offset msg
 	add edx,QUEUE_DEST
 	mov byte ptr[edx],al	;move the destination into the msg structure
+getOrg:
+	;the origin of the preceeding node will be itself when initially sent
+	mov edx,offset msg
+	add edx,QUEUE_SRC		;set the pointer equal to the src field in the msg struct
+	mov al,byte ptr[edx]	;pull the src out of the msg
+	mov edx,offset msg
+	add edx,QUEUE_ORG		;offset to the org field in the msg
+	mov byte ptr[edx],al	;move the src data into the org data
+getTTL:
+	;time to live will always be set to 5 initially
+	mov edx,offset msg
+	add edx,QUEUE_TTL		;offset to the TTL field
+	mov byte ptr[edx],5		;move 5 over to the TTL field
+getMessage:
+	;retrieve the message to send
+	print "message: "
+	mov edx,offset buffer
+	mov ecx,10				;limit to 10 because of limit of msg structure
+	call ReadString
+	mov edi,offset buffer	;set esi up for the cpyString procedure
+	mov esi,offset msg
+	add esi,QUEUE_MSG		;point to the msg field
+	call cpyString			;copy the buffer over to the msg QUEUE_MSG field
 
 	println "Message contents: "
 	call dispMsgStruct
+	;TODO put msg structure into the queues
 	ret
 makeMsg ENDP
+
+;
+;stepTime
+;steps one step in time so that each queue can transmit a message
+stepTime PROC
+	println "Place holder"
+	ret
+stepTime ENDP
 
 ;
 ;switchMenu
@@ -764,8 +843,9 @@ switchMenu PROC
 	movzx eax,buffer
 	ckEqual '1',dispNodes			;display the node information for the user
 	ckEqual '2',dispConnections		;display the node connections for the user
-	ckEqual '3',transmitMessage		;transmit a message for the user
-	ckEqual '4',exitProgram			;exit the program for the user
+	ckEqual '3',makeMsg				;Create a message for the user to transmit
+	ckEqual '4',stepTime			;step in time to transmit message and the such
+	ckEqual '5',exitProgram			;exit the program for the user
 	ret
 switchMenu ENDP
 
