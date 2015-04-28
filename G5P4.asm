@@ -1,5 +1,11 @@
 ;The last program
 ; Description:    Assembly Program 4
+;	This program is a node network topology simulator. It creates a set of nodes
+;	and connects them together through pointers. User can create a message. They
+;	have the choice to specify the starting and ending nodes. They then type
+;	the message in to send. The TTL counter is automatically set to 5 each time
+;	because that's the max amount of jumps that a packet can have and not reach
+;	the target node. 
 ; Class:          CSC 323
 ; Members:        Sean Curtis, Max Conroy, John Kirshner
 
@@ -13,6 +19,7 @@ buffer		byte	25	 dup(0)		;used for input
 dest		byte	1	 dup(0)		;destination node
 source		byte	1	 dup(0)		;source node
 char		byte	2	 dup(0)		;used for temporarily printing out character values
+nodeRecv	byte	6	 dup(0)		;used for keeping track which nodes have been processed each tx cycle
 
 ;
 ;message structure
@@ -23,7 +30,7 @@ QUEUE_TTL		equ 3	;Time to Live (and let die)			-1 byte
 QUEUE_MSG		equ 4	;Message value						-10 bytes
 QUEUE_MSG_SIZE	equ 10	;Size of message, limits size of the message
 QUEUE_SS 		equ 15	;total message size (for now)
-msg				byte	QUEUE_SS*50	 dup(0)		;holds the transmission message structure, space for 50 msg structures
+msg				byte	QUEUE_SS	 dup(0)		;holds the transmission message structure
 
 ;=======Strings=======
 welcome_msg byte "Welcome to the Nodetrix!!!",0
@@ -47,20 +54,22 @@ nodes byte 2000 dup(0)
 
 ;constants for pulling data from the structure
 ;constant structure data fields
-;total size: 14 bytes
+;total size: 18 bytes
 name			equ		0		;offset of the name					size: 1 byte
 connections		equ		1		;offset of the connections			size: 1 byte
 txqueue			equ		2		;offset of the txqueue				size: 4 bytes
-inPtr			equ		6		;offset of the inPtr				size: 4 bytes
-outPtr			equ		10		;offset of the outPtr				size: 4 bytes
-constNodesize	equ		14		;size of the constant space in each node
+rxqueue			equ		6		;offset of the outPtr				size: 4 bytes *3
+constNodesize	equ		18		;size of the constant space in each node
 ;variable sized structure data fields
 ;total size: 16 bytes
-nextNode		equ		14		;offset of the next node pointer	size: 4 bytes
-nodetx			equ		18		;offset of the next node tx pointer	size: 4 bytes
-noderx			equ		22		;offset of the next node rx pointer	size: 4 bytes
-nodeConnection	equ		26		;offset of the next node connection	size: 4 bytes
-varNodeSize		equ		16		;size of each variable space in the node
+;nextNode		equ		10		;offset of the next node pointer	size: 4 bytes
+;nodetx			equ		14		;offset of the next node tx pointer	size: 4 bytes
+;noderx			equ		18		;offset of the next node rx pointer	size: 4 bytes
+;nodeConnection	equ		22		;offset of the next node connection	size: 4 bytes
+;varNodeSize	equ		16		;size of each variable space in the node
+nextNode		equ		18		;offset of the next node pointer	size: 4 bytes
+nodeConnection	equ		22		;offset of the next node connection	size: 4 bytes
+varNodeSize		equ		8		;size of each variable space in the node
 
 ;offfsets for the different nodes
 aOffset			equ		0
@@ -118,6 +127,24 @@ ENDM
 ;
 ;PROCEDURES
 ;
+
+;
+;fillArray
+;@setup
+;mov edi,offset array
+;mov ecx,sizeof array
+;mov al,(desired content to fill)
+;
+fillArray PROC
+	dec edi
+fillArrayLoop:
+	inc edi
+	mov byte ptr[edi],al
+	dec ecx
+	cmp ecx,0
+	jg fillArrayLoop
+	ret
+fillArray ENDP
 
 ;
 ;toUpperCase
@@ -439,9 +466,27 @@ dispLoop:
 	add edx,connections		;move to the offset of the connections
 	movzx eax,byte ptr[edx]	;move the contents number of connections over to the eax register
 	call WriteDec			;and print it out
+	;jmp cont
+	;
+	push edx
+	push eax
+	println " "
+	print "txQueue: "
+	mov edx,edi
+	add edx,txqueue			;point to the txqueue field
+	mov eax,dword ptr[edx]	;move the pointer over to the eax register
+	call WriteDec			;print the pointer
+	print "	rxQueue: "
+	mov edx,edi
+	add edx,rxqueue			;point to the rxqueue field
+	mov eax,dword ptr[edx]	;move the pointer over to the eax register
+	call WriteDec
+	pop eax
+	pop edx
+cont:
 	
 	;go to the next node
-	println "	Connections: "
+	println "	Connections content: "
 	add edi,constNodeSize	;add the constant node size to skip over the constant space
 varNodeSizeLoop:
 	;display what the structure is pointing to
@@ -581,8 +626,8 @@ encqueue proc
 	;check for full
 	mov ebx, eax;
 	mov ecx, eax;
-	add ebx, inPtr
-	add ecx, outPtr
+	add ebx, rxqueue
+	add ecx, txqueue
 	
 	cmp ebx, ecx
 ;	je MaybeFull
@@ -598,7 +643,7 @@ JustKidding:
 	mov edx, 10 ; TODO: change to queuesize
 	imul edx
 	add ecx, eax
-	cmp  ecx, dword ptr [eax + inPtr]
+	cmp  ecx, dword ptr [eax + rxqueue]
 	je Adjust
 	
 Adjust:	
@@ -765,6 +810,7 @@ logClose endp
 ;MessageSize - 1 byte, size of the message to transmit
 ;Message	 - equivalent to the MessageSize field
 makeMsg PROC
+	push eax
 getSource:
 	print "Enter source node: "
 	mov edx,offset buffer
@@ -822,6 +868,39 @@ getMessage:
 	println "Message contents: "
 	call dispMsgStruct
 	;TODO put msg structure into the queues
+	mov edi,offset nodes
+	mov edx,offset msg
+	add edx,QUEUE_SRC		;point to the src field in the message
+	mov al,byte ptr[edx]	;move the src character into al
+	cmp al,'A'
+	jne makeMsg1
+	add edi,aOffset
+makeMsg1:
+	cmp al,'B'
+	jne makeMsg2
+	add edi,bOffset
+makeMsg2:
+	cmp al,'C'
+	jne makeMsg3
+	add edi,cOffset
+makeMsg3:
+	cmp al,'D'
+	jne makeMsg4
+	add edi,dOffset
+makeMsg4:
+	cmp al,'E'
+	jne makeMsg5
+	add edi,eOffset
+makeMsg5:
+	cmp al,'F'
+	jne makeMsg6
+	add edi,fOffset
+makeMsg6:
+	;done figuring out what the source node was
+	add edi,txqueue			;point to the tx queue 
+	mov eax,offset msg		;move msg's pointer into eax
+	mov dword ptr[edi],eax	;mov msg's pointer into the correct position
+	pop eax
 	ret
 makeMsg ENDP
 
@@ -829,7 +908,44 @@ makeMsg ENDP
 ;stepTime
 ;steps one step in time so that each queue can transmit a message
 stepTime PROC
-	println "Place holder"
+	;check to see if the TTL is 0
+	;if it is 0 then nullify the message and wipe all the tx queues
+	mov edx,offset msg
+	add edx,QUEUE_TTL		;point to the TTL field in the msg structure
+	mov al,byte ptr[edx]	;move the TTL counter
+	cmp al,0
+	jg txMessage			;if TTL is greater then 0 then transmit the message
+	;wipe the msg structure
+	mov edi,offset msg
+	mov ecx,QUEUE_SS
+	mov al,0
+	call fillArray			;fill the msg structure with null characters
+	;wipe the tx and rx fields in each node
+txMessage:					;transmit the message
+	mov edi,offset nodes	;nodes pointer is now in edi
+	mov esi,offset msg		;msg pointer is now in esi
+	mov edi,offset nodesRecv
+	mov ecx,6
+	mov al,0
+	call fillArray			;fill up the nodesRecv array
+stepTimeNextNode:
+	;cycle through each node
+	;move rx queue to the tx queue, if there's a node character in nodesRecv[] && rxqueuesize > 1
+	;	don't move the rx queue to the tx queue
+	mov bl,0				;if bl==1 by the end then a 
+	;TODO finish transmission
+
+	mov edx,edi				;move the nodes offset into edx for manipulation
+	add edx,rxqueue			;point to the rxqueue location
+stepTimeCont1:
+	
+	;check to see if there's a pointer in the txqueue
+	;if msg's destination field is equal to the node then don't transmit
+	;transmit message to connected nodes
+	;go to the next node
+
+stepTimeDone:
+	
 	ret
 stepTime ENDP
 
