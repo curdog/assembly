@@ -481,6 +481,14 @@ dispLoop:
 	add edx,rxqueue			;point to the rxqueue field
 	mov eax,dword ptr[edx]	;move the pointer over to the eax register
 	call WriteDec
+	print ", "
+	add edx,4				;point to the next rxqueue field
+	mov eax,dword ptr[edx]
+	call WriteDec
+	print ", "
+	add edx,4				;point to the next rxqueue field
+	mov eax,dword ptr[edx]
+	call WriteDec
 	pop eax
 	pop edx
 cont:
@@ -920,24 +928,77 @@ stepTime PROC
 	mov ecx,QUEUE_SS
 	mov al,0
 	call fillArray			;fill the msg structure with null characters
-	;wipe the tx and rx fields in each node
+	;TODO wipe the tx and rx fields in each node
 txMessage:					;transmit the message
-	mov edi,offset nodes	;nodes pointer is now in edi
-	mov esi,offset msg		;msg pointer is now in esi
-	mov edi,offset nodesRecv
+	mov edi,offset nodesRecv	;going to clear nodesRecv
 	mov ecx,6
 	mov al,0
 	call fillArray			;fill up the nodesRecv array
+	mov edi,offset nodes	;nodes pointer is now in edi
+	mov eax,9999			;use eax to deliminate the first node 
 stepTimeNextNode:
 	;cycle through each node
+	cmp eax,9999
+	je checkTxQueue			;skip the adding offset if this is the first node
+	;add the offset of the next node
+	mov edx,edi
+	add edx,connections		;point to the connections field in the nodes structure
+	mov al,byte ptr[edx]	;move the number of connections to the al register
+	add edi,constNodesize	;add the constant node size to edi
+stepTimeCont1:
+	add edi,varNodeSize		;add the variable node size to edi
+	dec al
+	cmp al,0
+	jg stepTimeCont1		;if the connections field hasn't decremented to 0 then add another varNodeSize
+	
+checkTxQueue:
+	mov eax,0				;just wipe eax just in case it doesn't get wiped for the first iteration of this loop
+	;TODO check to see if there's something in the tx queue, if there is then transmit it
+	;	otherwise will have to move a pointer from the rx queue to the tx queue
+	mov edx,edi				;move a temporary value into edx that's pointing to the node
+	add edx,txqueue
+	mov eax,dword ptr[edx]	;move the address into the eax register
+	cmp eax,0
+	je moveRxToTx			;going to move the rx to the tx field because there's nothing in the tx field
+	;if it gets through here, there's a pointer in the tx queue
+	;will want to transmit to each connected node's rxqueue
+	mov esi,edi				;pointer to the nodes field
+
+moveRxToTx:
+	;check to see if there's anything in the rx queue, if not, just cycle to the next node
+	mov edx,edi
+	add edx,rxqueue			;point to the rxqueue field
+	mov eax,dword ptr[edx]	;move the contents into eax
+	cmp eax,0
+	je stepTimeNextNode		;going to go the next node if the rxqueue is empty
 	;move rx queue to the tx queue, if there's a node character in nodesRecv[] && rxqueuesize > 1
 	;	don't move the rx queue to the tx queue
-	mov bl,0				;if bl==1 by the end then a 
+	mov bl,0				;if bl==1 by the end then a letter was in the nodesRecv array
+	mov esi,edi				;copy the nodes pointer to esi
+	add esi,name			;look at the name of the node
+	mov al,byte ptr[esi]	;pull the name of the node out
+	mov esi,offset nodesRecv	;move the pointer of nodesRecv into esi
+	dec esi					;offset esi so it corrects at the beginning of the loop
+	;time to step through the nodesRecv array to check to see if any nodes had transmitted to that node
+stepTimeNodesRecv:
+	inc esi					;go to the next array slot
+	mov cl,byte ptr[esi]	;move the character out, can also be a null byte
+	cmp cl,0				
+	je stepTimeNodesRecvDone	;go to the end of the loop if the byte pulled is a null byte
+	cmp cl,al				;compare the byte pulled from nodesRecv to the node name currently being processed
+	jne stepTimeNodesRecv	;go to the loop again if the characters compared were not equal to one another
+	mov bl,1				;move a 1 into bl to signify that there was the same character in the nodesRecv array
+	;can just break out of loop because we found the character
+stepTimeNodesRecvDone:
+	;check to see if bl==1 and that rxqueue has more then 1 item in queue
+	mov edx,edi				;copy the nodes address over to the 
+	add edx,rxqueue			;point to the rxqueue field
+	add edx,4				;point to the second rxqueue field
+	cmp byte ptr[edx],0		;check to see if it's null
+
 	;TODO finish transmission
 
-	mov edx,edi				;move the nodes offset into edx for manipulation
-	add edx,rxqueue			;point to the rxqueue location
-stepTimeCont1:
+stepTimeCont2:
 	
 	;check to see if there's a pointer in the txqueue
 	;if msg's destination field is equal to the node then don't transmit
