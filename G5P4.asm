@@ -20,6 +20,15 @@ dest		byte	1	 dup(0)		;destination node
 source		byte	1	 dup(0)		;source node
 char		byte	2	 dup(0)		;used for temporarily printing out character values
 nodesRecv	byte	6	 dup(0)		;used for keeping track which nodes have been processed each tx cycle
+didTx		byte	1	 dup(0)		;used for keeping track of whether or not a message transmitted
+echoOn		byte	1	 dup(0)		;used to keep track if the user wants to turn echo on or off
+totalTime	byte	1	 dup(0)		;keeps track of total time being processed
+msgRecv		byte	1	 dup(0)		;keeps track of messages received
+totalMsgs	byte	1	 dup(0)		;keeps track of total amount of messages
+temp1		dword	1	 dup(0)
+temp2		dword	1	 dup(0)
+temp3		dword	1	 dup(0)
+temp4		dword	1	 dup(0)
 
 ;
 ;message structure
@@ -873,6 +882,23 @@ getMessage:
 	mov esi,offset msg
 	add esi,QUEUE_MSG		;point to the msg field
 	call cpyString			;copy the buffer over to the msg QUEUE_MSG field
+getEcho:
+	print "Echo?(y/n): "
+	mov edx,offset char
+	mov ecx,1
+	call ReadString			;get user input
+	mov edx,offset char
+	call toUpperCase		;convert character to upper case
+	cmp char,'Y'
+	jne getEchoDone
+	cmp char,'N'
+	jne getEchoDone
+	jmp getEcho
+getEchoDone:
+	mov edi,offset echoOn
+	mov eax,offset char
+	mov al,byte ptr[eax]
+	mov echoOn,al			;move the character value into echo
 
 	println "Message contents: "
 	call dispMsgStruct
@@ -881,29 +907,41 @@ getMessage:
 	mov edx,offset msg
 	add edx,QUEUE_SRC		;point to the src field in the message
 	mov al,byte ptr[edx]	;move the src character into al
+	println " "
 	cmp al,'A'
 	jne makeMsg1
 	add edi,aOffset
+	println "Placing message in node A"
+	jmp makeMsg6
 makeMsg1:
 	cmp al,'B'
 	jne makeMsg2
 	add edi,bOffset
+	println "Placing message in node B"
+	jmp makeMsg6
 makeMsg2:
 	cmp al,'C'
 	jne makeMsg3
 	add edi,cOffset
+	println "Placing message in node C"
+	jmp makeMsg6
 makeMsg3:
 	cmp al,'D'
 	jne makeMsg4
 	add edi,dOffset
+	println "Placing message in node D"
+	jmp makeMsg6
 makeMsg4:
 	cmp al,'E'
 	jne makeMsg5
 	add edi,eOffset
+	println "Placing message in node E"
+	jmp makeMsg6
 makeMsg5:
 	cmp al,'F'
 	jne makeMsg6
 	add edi,fOffset
+	println "Placing message in node F"
 makeMsg6:
 	;done figuring out what the source node was
 	add edi,rxqueue			;point to the tx queue 
@@ -915,22 +953,121 @@ makeMsgDone:
 makeMsg ENDP
 
 ;
+;addNodesRecv
+;adds a character value to nodesRecv
+;used for the tx function in stepTime
+;@setup
+;mov al,character
+;
+addNodesRecv PROC
+	push ebx
+	push edx
+	push ecx
+	push edi
+	mov edx,offset nodesRecv	;move the offset of nodesRecv into edx
+	mov ebx,6					;6 node slots in this baby
+cycleNodesRecv:
+	mov cl,byte ptr[edx]		;move the character value from nodesRecv over for comparison
+	cmp cl,0
+	je cycleNodesRecvDone		;did we hit a null?
+	dec ebx
+	cmp ebx,0
+	jle addNodesRecvFin			;if we've gone through 6 characters we've gone too far
+	cmp cl,al
+	jne cycleNodesRecv			;if characters != then go to the next character
+	jmp addNodesRecvFin			;character dup detected, don't add al to nodesRecv
+cycleNodesRecvDone:
+	mov edx,offset nodesRecv
+	dec edx
+cycleNodesRecvLoop2:
+	inc edx
+	mov cl,byte ptr[edx]
+	cmp cl,0
+	jne cycleNodesRecvLoop2
+	mov byte ptr[edx],al		;move the character to the nodesRecvArray
+addNodesRecvFin:
+	pop edi
+	pop ecx
+	pop edx
+	pop ebx
+	ret
+addNodesRecv ENDP
+
+;
+;clearRxAndTx
+;clears all the nodes rx and tx fields
+;
+clearRxAndTx PROC
+	push edx
+	push eax
+	mov edx,offset nodes
+
+	;clear the node A rx and tx
+outerLoop:
+	mov al,byte ptr[edx]
+	mov char,al
+	push edx
+	mov edx,offset char
+	print "Wiping rx and tx of node "
+	call WriteString
+	println " "
+	pop edx
+	add edx,txqueue
+	mov dword ptr[edx],0		;clear the field
+	sub edx,txqueue
+	add edx,rxqueue
+	mov dword ptr[edx],0
+	add edx,4
+	mov dword ptr[edx],0
+	add edx,4
+	mov dword ptr[edx],0
+	sub edx,4
+	sub edx,4
+	sub edx,rxqueue				;reset to the beginning of the node now
+	add edx,connections
+	mov al, byte ptr[edx]		;move the number of connections over to al
+	sub edx,connections
+	add edx,constNodesize		;add the constant node size to this sum bitch
+innerLoop:
+	add edx,varNodeSize
+	dec al
+	cmp al,0
+	jg innerLoop
+	;see if we're at the end of the nodes
+	mov eax,offset nodes
+	add eax,fOffset
+	inc eax
+	cmp edx,eax					;have we gotten through f yet?
+	jl outerLoop
+
+	pop eax
+	pop edx
+	ret
+clearRxAndTx ENDP
+
+;
 ;stepTime
 ;steps one step in time so that each queue can transmit a message
 stepTime PROC
+	push eax
 	;check to see if the TTL is 0
 	;if it is 0 then nullify the message and wipe all the tx queues
+
 	mov edx,offset msg
 	add edx,QUEUE_TTL		;point to the TTL field in the msg structure
 	mov al,byte ptr[edx]	;move the TTL counter
 	cmp al,0
-	jg stepTimeSTart			;if TTL is greater then 0 then transmit the message
-	;wipe the msg structure
+	jg stepTimeStart			;if TTL is greater then 0 then transmit the message
+	;or else you will have to wipe the msg structure
+	println "TTL counter depreciated, destroying message"
 	mov edi,offset msg
 	mov ecx,QUEUE_SS
 	mov al,0
 	call fillArray			;fill the msg structure with null characters
 	;TODO wipe the tx and rx fields in each node
+	call clearRxAndTx
+	jmp finalCont
+
 stepTimeStart:					;transmit the message
 	mov edi,offset nodesRecv	;going to clear nodesRecv
 	mov ecx,6				;size of 6 slots in the nodesRecv array
@@ -940,49 +1077,81 @@ stepTimeStart:					;transmit the message
 	mov eax,9999			;use eax to deliminate the first node 
 stepTimeNextNode:
 	;cycle through each node
+	;print out which node is being processed
+	print "Processing node "
+	mov bl,byte ptr[edi]
+	mov char,bl
+	mov edx,offset char
+	call WriteString		;print out the node currently being processed
+	println " "
 	cmp eax,9999
-	je checkTxQueue			;skip the adding offset if this is the first node
+	je checkRxAndTxFields	;skip the adding offset if this is the first node
 	;add the offset of the next node
 	mov edx,edi
 	add edx,connections		;point to the connections field in the nodes structure
 	mov al,byte ptr[edx]	;move the number of connections to the al register
 	add edi,constNodesize	;add the constant node size to edi
-stepTimeCont1:
+addVarNodeSize:
 	add edi,varNodeSize		;add the variable node size to edi
 	dec al
 	cmp al,0
-	jg stepTimeCont1		;if the connections field hasn't decremented to 0 then add another varNodeSize
+	jg addVarNodeSize		;if the connections field hasn't decremented to 0 then add another varNodeSize
 	
-checkTxQueue:
-	mov eax,0				;just wipe eax just in case it doesn't get wiped for the first iteration of this loop
-	;TODO check to see if there's something in the tx queue, if there is then transmit it
-	;	otherwise will have to move a pointer from the rx queue to the tx queue
-	mov edx,edi				;move a temporary value into edx that's pointing to the node
+checkRxAndTxFields:
+	;check to see if both tx and rx fields are empty
+	mov edx,edi
 	add edx,txqueue
-	mov eax,dword ptr[edx]	;move the address into the eax register
-	cmp eax,0
-	je moveRxToTx			;going to move the rx to the tx field because there's nothing in the tx field
-	;if it gets through here, there's a pointer in the tx queue
-	;will want to transmit to each connected node's rxqueue
-	;if msg's destination field is equal to the node then don't transmit
-	;transmit message to connected nodes
-	
-	;going to have to check connection's rx queue to see if it's empty
+	cmp dword ptr[edx],0
+	jne transmit		;there's something in the tx field, transmit that sucker
+	mov edx,edi
+	add edx,rxqueue
+	mov eax,dword ptr[edx]
+	cmp dword ptr[edx],0
+	jne moveRxToTx			;there's something in the rx field, move that sucker up
+	println "	Nothing in tx or rx queue"
+	jmp checkEndOfNodes
+
+
+transmit:
+	println "	Transmitting to  connected nodes"
 	mov edx,edi				;use as a temporary pointer for grabbing the tx queue contents
 	add edx,txqueue
-	mov ebx,dword ptr[edx]	;move the pointer from the tx queue into ebx, done with edx until cycleThroughConnections
+	mov ebx,dword ptr[edx]	;move the pointer from the tx queue into ebx, done with ebx until cycleThroughConnections
+	mov dword ptr[edx],0	;clear the txqueue field because you have the data saved in ebx
 	mov edx,edi
 	add edx,connections		;point edx to the number of connections
 	mov al,byte ptr[edx]	;move the number of connetions over to al so you can loop through each connection
 	;time to start cycling through the connections
+	mov esi,edi				;esi will contain the original address that can be switched up and cycled through
 cycleThroughConnections:
-	mov edx,edi				;move ecx into edx so that you can access everything without destroying ecx
+	mov temp1,eax
+	mov edx,esi				;mov node pointer to edx to access connections
+	add esi,varNodeSize		;go to the next node connection
 	add edx,nodeConnection	;point edx to the pointer to the connection
 	mov edx,dword ptr[edx]	;move the pointer to the next node into edx
+
+	;check to see if we should send the message to the previously connected node
+	;cmp echo,'N'
+	;je txContEcho			;if user doesn't want to echo back then we execute the follow code
+	;yup, that requires a complete rehaul of the messaging system
+	;nope, that's not happening at 2am
+
+txContEcho:
+	print "	Transmitting to node "
+	mov al,byte ptr[edx]
+	mov char,al
+	call addNodesRecv		;add the node name to the nodesRecv array
+	push edx
+	mov edx,offset char
+	call WriteString		;print out what node is being processed
+	println " "
+	inc totalMsgs
+	mov didTx,1				;set the flag for whether or not the message transmitted
+	pop edx
 	add edx,rxqueue			;offset edx to the rxqueue field
-	push eax				;save al
-	push ebx				;save bl
+	mov temp2,ebx				;save bl
 	mov bl,0
+	;point to the next available space in the receiving node's rxqueue field
 cycleRxQueueData:
 	mov eax,dword ptr[edx]	;move the rxqueue data into eax
 	cmp eax,0
@@ -994,36 +1163,30 @@ cycleRxQueueData:
 cycleRxQueueDataDone:
 	cmp bl,3
 	jne cycleRxQueueDataCont
-	println "Receiving node's rx queue is full"
-	jmp checkEndOfNodes		;go to the next node since the rx field is full
+	println "	Receiving node's rx queue is full"
+	jmp checkEndOfNodes		;go to the next node since the rx field is full   ???
 cycleRxQueueDataCont:
-	pop ebx
-	pop eax					;pop that sum bitch back off the stack
+	mov ebx,temp2
 	mov dword ptr[edx],ebx	;move the node's tx queue into the connected node's rx queue
 
-	add ecx,varNodeSize		;offset to the next connection
+	mov eax,temp1
 	dec al
 	cmp al,0				;check to see if we're at the end of the connections
 	jg cycleThroughConnections
-	mov edx,edi
-	add edx,txqueue			;point to the txqueue field
-	mov dword ptr[edx],0	;clear the txqueue after done cycling through the connected nodes
-
 	jmp checkEndOfNodes		;go to the end of the function and check to see if we're at the end of the nodes
 
 	;move the rxqueue up to the txqueue
 moveRxToTx:
 	;check to see if there's anything in the rx queue, if not, just cycle to the next node
+	println "	Moving node's rx data to the tx field"
+	jmp moveRxUp		;;;Testing
 	mov edx,edi
 	add edx,rxqueue			;point to the rxqueue field
-	mov eax,dword ptr[edx]	;move the contents into eax
-	cmp eax,0
-	je checkEndOfNodes		;going to go the next node if the rxqueue is empty
 	;move rx queue to the tx queue, if there's a node character in nodesRecv[] && rxqueuesize > 1
 	;	don't move the rx queue to the tx queue
 	mov bl,0				;if bl==1 by the end then a letter was in the nodesRecv array
 	mov esi,edi				;copy the nodes pointer to esi
-	mov al,byte ptr[esi]	;pull the name of the node out
+	mov al,byte ptr[esi]	;pull the name of the node that is being operated on out of the structure
 	mov esi,offset nodesRecv	;move the pointer of nodesRecv into esi
 	dec esi					;offset esi so it corrects at the beginning of the loop
 	;time to step through the nodesRecv array to check to see if any nodes had transmitted to that node
@@ -1046,6 +1209,18 @@ stepTimeNodesRecvDone:
 	cmp bl,1
 	je stepTimeNextNode		;if both bl==1 and rxqueue+4==0 then you don't want to transmit
 moveRxUp:
+	;check to see if msg's destination is equal to the current node's
+	;	this will prevent the moving of the packet to the tx field
+	mov esi,offset msg
+	add esi,QUEUE_DEST
+	mov al,byte ptr[esi]	;move the message destination into al
+	mov bl,byte ptr[edi]	;move the current character into bl
+	cmp al,bl
+	jne moveRxUpCont
+	println "****Message arrived at destination node****"
+	inc msgRecv
+	dec totalMsgs
+moveRxUpCont:
 	mov edx,edi
 	add edx,rxqueue			;point to the rxqueue
 	mov eax,dword ptr[edx]	;move the rx pointer to the eax register
@@ -1068,13 +1243,37 @@ moveRxUp:
 	mov dword ptr[edx],eax	;move the 3rd queue slot to the 2nd queue slot
 	
 checkEndOfNodes:
-	;go to the next node
-	mov al,byte ptr[edi]	;move the character name of the node into al
-	cmp al,'E'
-	jne stepTimeNextNode	;if the node name isn't E then go to the start
+	mov eax,offset nodes
+	add eax,fOffset
+	add eax,constNodeSize
+	add eax,varNodeSize
+	add eax,varNodeSize
+	add eax,varNodeSize
+	cmp eax,edi
+	jne stepTimeNextNode	;if the address is less then the end of the nodes then go back to the next node
 
 stepTimeDone:
-	
+	cmp didTx,1
+	jne finalcont
+	mov edx,offset msg
+	add edx,QUEUE_TTL		;go to the TTL field in the msg structure
+	dec byte ptr[edx]		;decrement the TTL field
+	mov didTx,0				;reset the didTx flag
+finalcont:
+	inc totalTime
+	println " "
+	print "Total time: "
+	movzx eax,totalTime
+	call WriteDec			;print the total time
+	println " "
+	print "Messages received: "
+	movzx eax,msgRecv
+	call WriteDec
+	println " "
+	print "Total messages: "
+	movzx eax,totalMsgs
+	call WriteDec
+	pop eax
 	ret
 stepTime ENDP
 
